@@ -1,0 +1,89 @@
+CREATE OR REPLACE FUNCTION preencher_formulario(p_tabela text, p_registro int)
+RETURNS jsonb AS $$
+DECLARE
+    dados_fixos jsonb;
+    dados_ajustaveis jsonb;
+    campos_fixos jsonb;
+    campos_ajustaveis jsonb;
+    opcoes jsonb := '{}'::jsonb;
+    r_fk record;
+    opcoes_temp jsonb;
+BEGIN
+    -- 1. CAMPOS FIXOS (metadados da tabela E)
+    SELECT jsonb_object_agg(
+        campo, jsonb_build_object( 'ordem', ordem, 'rotulo', rotulo ) 
+    ) 
+    INTO campos_fixos
+    FROM metadados m 
+    WHERE m.tabela = p_tabela;
+
+    -- 2. CAMPOS AJUSTÁVEIS (todos os campos da tabela A correspondente)
+    EXECUTE format(
+        'SELECT jsonb_agg(jsonb_build_object(''id'', id, ''nome'', nome)) 
+         FROM campos_%I', p_tabela
+    ) INTO campos_ajustaveis;
+
+    -- 3. DADOS FIXOS (registro da tabela E)
+    IF p_registro = 0 THEN
+        -- template vazio
+        SELECT jsonb_object_agg(campo, NULL)
+        INTO dados_fixos
+        FROM metadados m
+        WHERE m.tabela = p_tabela;
+        
+        dados_ajustaveis := '[]'::jsonb;
+    ELSE
+        EXECUTE format(
+            'SELECT to_jsonb(t) 
+             FROM %I t WHERE id = $1', p_tabela
+        ) INTO dados_fixos USING p_registro;
+
+        -- 4. DADOS AJUSTÁVEIS (valores da tabela V)
+        EXECUTE format(
+            'SELECT jsonb_agg(jsonb_build_object(''id'', id, ''campo_id'', campo_id, ''valor'', valor)) 
+             FROM info_%I WHERE %I_id = $1', p_tabela, p_tabela
+        ) INTO dados_ajustaveis USING p_registro;
+    END IF;
+
+    -- 5. OPÇÕES (FKs apontadas em metadados)
+    FOR r_fk IN 
+        SELECT campo, fk_tabela, filtro -- Adicionado coluna filtro
+        FROM metadados m 
+        WHERE m.tabela = p_tabela 
+        AND m.fk_tabela IS NOT NULL 
+        AND m.fk_tabela <> ''
+    LOOP
+        IF length(r_fk.fk_tabela) > 0 THEN
+            
+            -- LÓGICA GENÉRICA DE FILTRO
+            -- Se houver um nome de coluna no campo 'filtro', aplica WHERE filtro = p_registro
+            IF r_fk.filtro IS NOT NULL AND r_fk.filtro <> '' THEN
+                EXECUTE format(
+                    'SELECT jsonb_agg(jsonb_build_object(''id'', id, ''nome'', nome)) 
+                     FROM %I 
+                     WHERE %I = $1',
+                    r_fk.fk_tabela, r_fk.filtro
+                ) INTO opcoes_temp USING p_registro;
+            
+            -- CASO PADRÃO (Sem filtro, pega tudo)
+            ELSE
+                EXECUTE format(
+                    'SELECT jsonb_agg(jsonb_build_object(''id'', id, ''nome'', nome)) FROM %I',
+                    r_fk.fk_tabela
+                ) INTO opcoes_temp;
+            END IF;
+            
+            opcoes := jsonb_set(opcoes, ARRAY[r_fk.campo], COALESCE(opcoes_temp, '[]'::jsonb));
+        END IF;
+    END LOOP;
+
+    -- 6. RETORNO FINAL
+    RETURN jsonb_build_object(
+        'dados_fixos', dados_fixos,
+        'dados_ajustaveis', COALESCE(dados_ajustaveis, '[]'::jsonb),
+        'campos_fixos', COALESCE(campos_fixos, '[]'::jsonb),
+        'campos_ajustaveis', COALESCE(campos_ajustaveis, '[]'::jsonb),
+        'opcoes', opcoes
+    );
+END;
+$$ LANGUAGE plpgsql;

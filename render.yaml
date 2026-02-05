@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: abiospg
+    env: docker
+    region: oregon
+    plan: free
+    envVars:
+      - key: PORT
+        value: 8080
+      - key: ENDERECO
+        sync: false
+      - key: CHAVE
+        sync: false
+      - key: USUARIO
+        sync: false
+      - key: SENHA
+        sync: false

@@ -1,0 +1,1593 @@
+{
+    "escopo": {
+        "nucleo": "Aurora Serrana",
+        "grupo": "Nova Friburgo e Regi\u00e3o",
+        "matricula": "01-004",
+        "primeiro_associado": "Marc Ferrez Weinberg"
+    },
+    "grupos": [
+        {
+            "id": 19,
+            "nome": "Tortas e bolos",
+            "produtos": [
+                {
+                    "id": 787,
+                    "nome": "Bolo de Banana com Canela",
+                    "incluso": false
+                },
+                {
+                    "id": 788,
+                    "nome": "Bolo de Cenoura com Cacau",
+                    "incluso": false
+                },
+                {
+                    "id": 789,
+                    "nome": "Torta de Banana Integral",
+                    "incluso": false
+                },
+                {
+                    "id": 790,
+                    "nome": "Torta de Cacau",
+                    "incluso": false
+                },
+                {
+                    "id": 791,
+                    "nome": "Torta de Ma\u00e7\u00e3",
+                    "incluso": false
+                }
+            ]
+        },
+        {
+            "id": 20,
+            "nome": "Gel\u00e9ias",
+            "produtos": [
+                {
+                    "id": 805,
+                    "nome": "Geleia de Abacaxi",
+                    "incluso": false
+                },
+                {
+                    "id": 806,
+                    "nome": "Geleia de Acerola",
+                    "incluso": false
+                },
+                {
+                    "id": 807,
+                    "nome": "Geleia de Amora",
+                    "incluso": false
+                },
+                {
+                    "id": 808,
+                    "nome": "Geleia de Ara\u00e7\u00e1",
+                    "incluso": false
+                },
+                {
+                    "id": 809,
+                    "nome": "Geleia de Caj\u00e1 Mirim",
+                    "incluso": false
+                },
+                {
+                    "id": 810,
+                    "nome": "Geleia de Coccinea",
+                    "incluso": false
+                },
+                {
+                    "id": 811,
+                    "nome": "Geleia de Jamel\u00e3o",
+                    "incluso": false
+                },
+                {
+                    "id": 812,
+                    "nome": "Geleia de Manga",
+                    "incluso": false
+                },
+                {
+                    "id": 813,
+                    "nome": "Geleia de Pitomba",
+                    "incluso": false
+                },
+                {
+                    "id": 814,
+                    "nome": "Geleia de Tamarindo",
+                    "incluso": false
+                },
+                {
+                    "id": 815,
+                    "nome": "Geleia de Tangerina",
+                    "incluso": false
+                },
+                {
+                    "id": 1128,
+                    "nome": "Geleia de Morango",
+                    "incluso": false
+                },
+                {
+                    "id": 1129,
+                    "nome": "Pera D\u2019\u00e1gua em Calda",
+                    "incluso": false
+                },
+                {
+                    "id": 1347,
+                    "nome": "Geleia de Laranja da Terra",
+                    "incluso": false
+                },
+                {
+                    "id": 1348,
+                    "nome": "Geleia de Pimenta e P\u00eara",
+                    "incluso": false
+                },
+                {
+                    "id": 1349,
+                    "nome": "Geleia de Tomates",
+                    "incluso": false
+                }
+            ]
+        },
+        {
+            "id": 21,
+            "nome": "Produtos Org\u00e2nicos Fracionados",
+            "produtos": [
+                {
+                    "id": 84,
+                    "nome": "A\u00e7\u00facar Mascavo",
+                    "incluso": true
+                },
+                {
+                    "id": 85,
+                    "nome": "A\u00e7\u00facar Cristal",
+                    "incluso": true
+                },
+                {
+                    "id": 86,
+                    "nome": "Aveia Laminada",
+                    "incluso": true
+                },
+                {
+                    "id": 87,
+                    "nome": "Farinha De Trigo Branca",
+                    "incluso": true
+                },
+                {
+                    "id": 88,
+                    "nome": "Farinha De Trigo Integral",
+                    "incluso": true
+                }
+            ]
+        },
+        {
+            "id": 22,
+            "nome": "Doces Em Calda",
+            "produtos": [
+                {
+                    "id": 61,
+                    "nome": "Amora Europ\u00e9ia Em Calda",
+                    "incluso": true
+                },
+                {
+                    "id": 62,
+                    "nome": "Figo Verde Em Calda",
+                    "incluso": true
+                },
+                {
+                    "id": 63,
+                    "nome": "Framboesa Em Calda",
+                    "incluso": true
+                },
+                {
+                    "id": 64,
+                    "nome": "Goiaba Em Calda",
+                    "incluso": true
+                },
+                {
+                    "id": 65,
+                    "nome": "Goiaba Em Calda Sem A\u00e7\u00facar (Com Agave Azul)",
+                    "incluso": true
+                },
+                {
+                    "id": 66,
+                    "nome": "Laranja Da Terra Em Calda",
+                    "incluso": true
+                },
+                {
+                    "id": 67,
+                    "nome": "Laranja Da Terra Sem A\u00e7\u00facar (Com Agave Azul)",
+                    "incluso": true
+                },
+                {
+                    "id": 68,
+                    "nome": "P\u00eassego Em Calda",
+                    "incluso": true
+                },
+                {
+                    "id": 69,
+                    "nome": "P\u00eassego Em Calda Sem A\u00e7\u00facar (Com Agave Azul)",
+                    "incluso": true
+                }
+            ]
+        },
+        {
+            "id": 23,
+            "nome": "Produtos Com Ingredientes Org\u00e2nicos",
+            "produtos": [
+                {
+                    "id": 89,
+                    "nome": "Bolo De Banana, Chocolate E Framboesas Pretas",
+                    "incluso": true
+                },
+                {
+                    "id": 90,
+                    "nome": "Bolo De Chocolate, Banana E Doce De Casca De Laranja",
+                    "incluso": true
+                },
+                {
+                    "id": 690,
+                    "nome": "P\u00e3o Passas Com Canela",
+                    "incluso": false
+                },
+                {
+                    "id": 792,
+                    "nome": "Bolo de Aipim com Coco",
+                    "incluso": false
+                },
+                {
+                    "id": 793,
+                    "nome": "Torta de Maracuj\u00e1 com Ameixa",
+                    "incluso": false
+                },
+                {
+                    "id": 921,
+                    "nome": "Ra\u00e7\u00e3o Naturis Crescimento",
+                    "incluso": false
+                },
+                {
+                    "id": 922,
+                    "nome": "Ra\u00e7\u00e3o Naturis Engorda",
+                    "incluso": false
+                },
+                {
+                    "id": 923,
+                    "nome": "Ra\u00e7\u00e3o Naturis Inicial",
+                    "incluso": false
+                },
+                {
+                    "id": 924,
+                    "nome": "Ra\u00e7\u00e3o Naturis Poedeiras",
+                    "incluso": false
+                },
+                {
+                    "id": 1801,
+                    "nome": "Baguete sem Gl\u00faten",
+                    "incluso": false
+                },
+                {
+                    "id": 1802,
+                    "nome": "Bolo de Banana sem A\u00e7\u00facar",
+                    "incluso": false
+                },
+                {
+                    "id": 1803,
+                    "nome": "Bolo de Batata Doce com Coco",
+                    "incluso": false
+                },
+                {
+                    "id": 1804,
+                    "nome": "Bolo de Fub\u00e1 com Goiabada",
+                    "incluso": false
+                },
+                {
+                    "id": 1805,
+                    "nome": "Bolo de Laranja",
+                    "incluso": false
+                },
+                {
+                    "id": 1806,
+                    "nome": "Bolo Integral de Ma\u00e7\u00e3",
+                    "incluso": false
+                },
+                {
+                    "id": 1807,
+                    "nome": "Bolo Pamonha",
+                    "incluso": false
+                },
+                {
+                    "id": 1808,
+                    "nome": "Bolo Quebra Queixo",
+                    "incluso": false
+                },
+                {
+                    "id": 1809,
+                    "nome": "Brioche",
+                    "incluso": false
+                },
+                {
+                    "id": 1810,
+                    "nome": "Cinnamon",
+                    "incluso": false
+                },
+                {
+                    "id": 1811,
+                    "nome": "Focaccia",
+                    "incluso": false
+                },
+                {
+                    "id": 1812,
+                    "nome": "P\u00e3o Australiano sem Gl\u00faten",
+                    "incluso": false
+                },
+                {
+                    "id": 1813,
+                    "nome": "P\u00e3o de Aipim",
+                    "incluso": false
+                },
+                {
+                    "id": 1814,
+                    "nome": "P\u00e3o de Batata Doce Cenoura",
+                    "incluso": false
+                },
+                {
+                    "id": 1815,
+                    "nome": "P\u00e3o de Batata Doce Roxa",
+                    "incluso": false
+                },
+                {
+                    "id": 1816,
+                    "nome": "P\u00e3o de Cacau",
+                    "incluso": false
+                },
+                {
+                    "id": 1817,
+                    "nome": "P\u00e3o de Forma sem Gl\u00faten",
+                    "incluso": false
+                },
+                {
+                    "id": 1818,
+                    "nome": "P\u00e3o de Milho",
+                    "incluso": false
+                },
+                {
+                    "id": 1819,
+                    "nome": "P\u00e3o de Milho sem Gl\u00faten",
+                    "incluso": false
+                },
+                {
+                    "id": 1820,
+                    "nome": "P\u00e3o Integral com Nozes",
+                    "incluso": false
+                }
+            ]
+        },
+        {
+            "id": 24,
+            "nome": "Hidrolatos",
+            "produtos": [
+                {
+                    "id": 969,
+                    "nome": "Alfavaca Anis",
+                    "incluso": false
+                },
+                {
+                    "id": 970,
+                    "nome": "Chamb\u00e1",
+                    "incluso": false
+                },
+                {
+                    "id": 971,
+                    "nome": "Cidr\u00f3",
+                    "incluso": false
+                },
+                {
+                    "id": 972,
+                    "nome": "Falso Jaborandi Beth",
+                    "incluso": false
+                },
+                {
+                    "id": 973,
+                    "nome": "Jaborandi",
+                    "incluso": false
+                },
+                {
+                    "id": 974,
+                    "nome": "Lirio-do-brejo",
+                    "incluso": false
+                },
+                {
+                    "id": 975,
+                    "nome": "Mirra",
+                    "incluso": false
+                },
+                {
+                    "id": 976,
+                    "nome": "Moringa",
+                    "incluso": false
+                },
+                {
+                    "id": 977,
+                    "nome": "Mulungu",
+                    "incluso": false
+                },
+                {
+                    "id": 978,
+                    "nome": "Negramina",
+                    "incluso": false
+                },
+                {
+                    "id": 979,
+                    "nome": "Vetver",
+                    "incluso": false
+                }
+            ]
+        },
+        {
+            "id": 25,
+            "nome": "Doces",
+            "produtos": [
+                {
+                    "id": 43,
+                    "nome": "Bananada Com A\u00e7\u00facar",
+                    "incluso": true
+                },
+                {
+                    "id": 44,
+                    "nome": "Bananada Sem A\u00e7\u00facar",
+                    "incluso": true
+                },
+                {
+                    "id": 45,
+                    "nome": "Doce De Ab\u00f3bora Desidratada",
+                    "incluso": true
+                },
+                {
+                    "id": 46,
+                    "nome": "Doce De Ab\u00f3bora Pastoso",
+                    "incluso": true
+                },
+                {
+                    "id": 47,
+                    "nome": "Doce De Casca De Grapefruit",
+                    "incluso": true
+                },
+                {
+                    "id": 48,
+                    "nome": "Doce De Casca De Laranja",
+                    "incluso": true
+                },
+                {
+                    "id": 49,
+                    "nome": "Doce De Casca De Lima Da P\u00e9rsia",
+                    "incluso": true
+                },
+                {
+                    "id": 50,
+                    "nome": "Doce De Casca De Lim\u00e3o",
+                    "incluso": true
+                },
+                {
+                    "id": 51,
+                    "nome": "Doce De Casca De Mexerica",
+                    "incluso": true
+                },
+                {
+                    "id": 52,
+                    "nome": "Doce De Figo Verde",
+                    "incluso": true
+                },
+                {
+                    "id": 53,
+                    "nome": "Doce De Lascas De Gengibre",
+                    "incluso": true
+                },
+                {
+                    "id": 54,
+                    "nome": "Figada Com A\u00e7\u00facar",
+                    "incluso": true
+                },
+                {
+                    "id": 55,
+                    "nome": "Figada Com Pimenta",
+                    "incluso": true
+                },
+                {
+                    "id": 56,
+                    "nome": "Figada Sem A\u00e7\u00facar (Com Agave Azul)",
+                    "incluso": true
+                },
+                {
+                    "id": 57,
+                    "nome": "Goiabada Com A\u00e7\u00facar",
+                    "incluso": true
+                },
+                {
+                    "id": 58,
+                    "nome": "Goiabada Com Pimenta",
+                    "incluso": true
+                },
+                {
+                    "id": 59,
+                    "nome": "Goiabada Sem A\u00e7\u00facar (Com Calda De Agave Azul)",
+                    "incluso": true
+                },
+                {
+                    "id": 60,
+                    "nome": "Pessegada Com A\u00e7\u00facar",
+                    "incluso": true
+                },
+                {
+                    "id": 1317,
+                    "nome": "Banana Passa",
+                    "incluso": false
+                },
+                {
+                    "id": 1318,
+                    "nome": "Goiabada",
+                    "incluso": false
+                },
+                {
+                    "id": 1680,
+                    "nome": "Banana Passa Nanica",
+                    "incluso": false
+                },
+                {
+                    "id": 1681,
+                    "nome": "Banana Passa Ouro",
+                    "incluso": false
+                },
+                {
+                    "id": 1682,
+                    "nome": "Banana Passa Prata",
+                    "incluso": false
+                },
+                {
+                    "id": 1683,
+                    "nome": "Barra Energ\u00e9tica",
+                    "incluso": false
+                },
+                {
+                    "id": 1684,
+                    "nome": "Bombom de Banana",
+                    "incluso": false
+                },
+                {
+                    "id": 1832,
+                    "nome": "Banana da",
+                    "incluso": false
+                }
+            ]
+        },
+        {
+            "id": 26,
+            "nome": "Refei\u00e7\u00f5es prontas",
+            "produtos": [
+                {
+                    "id": 1427,
+                    "nome": "Atolado de feij\u00e3o carioca, arroz com castanha do par\u00e1 e banana da terra e couve no alho",
+                    "incluso": false
+                },
+                {
+                    "id": 1428,
+                    "nome": "Bai\u00e3o de dois e vegetais verdes grelhados",
+                    "incluso": false
+                },
+                {
+                    "id": 1429,
+                    "nome": "Bai\u00e3o de dois por\u00e7\u00e3o",
+                    "incluso": false
+                },
+                {
+                    "id": 1430,
+                    "nome": "Caldinho de cogumelos com dend\u00ea",
+                    "incluso": false
+                },
+                {
+                    "id": 1431,
+                    "nome": "Caldinho de shimeji com dend\u00ea",
+                    "incluso": false
+                },
+                {
+                    "id": 1432,
+                    "nome": "Caldo verde com tofu defumado",
+                    "incluso": false
+                },
+                {
+                    "id": 1433,
+                    "nome": "Chana masala e arroz com capim lim\u00e3o, damasco e cebolinhas",
+                    "incluso": false
+                },
+                {
+                    "id": 1434,
+                    "nome": "Chutney de manga",
+                    "incluso": false
+                },
+                {
+                    "id": 1435,
+                    "nome": "Chutney de tomate",
+                    "incluso": false
+                },
+                {
+                    "id": 1436,
+                    "nome": "Cogumelos ao vinho arroz branco com cebolinha",
+                    "incluso": false
+                },
+                {
+                    "id": 1437,
+                    "nome": "Creme de ab\u00f3bora com gengibre",
+                    "incluso": false
+                },
+                {
+                    "id": 1438,
+                    "nome": "Creme de castanha fermentado",
+                    "incluso": false
+                },
+                {
+                    "id": 1439,
+                    "nome": "Escondidinho de aipim com cogumelos e berinjela",
+                    "incluso": false
+                },
+                {
+                    "id": 1440,
+                    "nome": "Estrogonofe de gr\u00e3o de bico, arroz com beterraba e batatas coradas",
+                    "incluso": false
+                },
+                {
+                    "id": 1441,
+                    "nome": "Falafel de gr\u00e3o de bico",
+                    "incluso": false
+                },
+                {
+                    "id": 1442,
+                    "nome": "Feij\u00e3o amigo",
+                    "incluso": false
+                },
+                {
+                    "id": 1443,
+                    "nome": "Feij\u00e3o da casa por\u00e7\u00e3o",
+                    "incluso": false
+                },
+                {
+                    "id": 1444,
+                    "nome": "Feij\u00e3o tropeiro",
+                    "incluso": false
+                },
+                {
+                    "id": 1445,
+                    "nome": "Quibebe de ab\u00f3bora e br\u00f3colis no vapor",
+                    "incluso": false
+                },
+                {
+                    "id": 1446,
+                    "nome": "Feijoada de cogumelos por\u00e7\u00e3o",
+                    "incluso": false
+                },
+                {
+                    "id": 1447,
+                    "nome": "Feijoada de cogumelos arroz integral couve no alho e farofa de banana",
+                    "incluso": false
+                },
+                {
+                    "id": 1448,
+                    "nome": "Geleia de abacaxi com pimenta",
+                    "incluso": false
+                },
+                {
+                    "id": 1449,
+                    "nome": "Lasanha de br\u00f3colis com creme de manjeric\u00e3o",
+                    "incluso": false
+                },
+                {
+                    "id": 1450,
+                    "nome": "Missoshiru",
+                    "incluso": false
+                },
+                {
+                    "id": 1451,
+                    "nome": "Moqueca de banana da terra arroz com coco amendoim e farofa de couve",
+                    "incluso": false
+                },
+                {
+                    "id": 1452,
+                    "nome": "Muffin de banana",
+                    "incluso": false
+                },
+                {
+                    "id": 1453,
+                    "nome": "Muffin de banana sem gl\u00faten",
+                    "incluso": false
+                },
+                {
+                    "id": 1454,
+                    "nome": "Pomodoro da casa",
+                    "incluso": false
+                },
+                {
+                    "id": 1455,
+                    "nome": "Shitake \u00e0 milanesa arroz cateto feij\u00e3o da casa e couve no alho",
+                    "incluso": false
+                }
+            ]
+        },
+        {
+            "id": 27,
+            "nome": "Geleias e compotas",
+            "produtos": [
+                {
+                    "id": 70,
+                    "nome": "Geleia De Amora Europ\u00e9ia",
+                    "incluso": true
+                },
+                {
+                    "id": 71,
+                    "nome": "Geleia De Figo",
+                    "incluso": true
+                },
+                {
+                    "id": 72,
+                    "nome": "Geleia De Framboesa",
+                    "incluso": true
+                },
+                {
+                    "id": 73,
+                    "nome": "Geleia De Framboesa E P\u00eassego",
+                    "incluso": true
+                },
+                {
+                    "id": 74,
+                    "nome": "Geleia De Goiaba",
+                    "incluso": true
+                },
+                {
+                    "id": 75,
+                    "nome": "Geleia De Jabuticaba",
+                    "incluso": true
+                },
+                {
+                    "id": 76,
+                    "nome": "Geleia De Laranja",
+                    "incluso": true
+                },
+                {
+                    "id": 77,
+                    "nome": "Geleia De Laranja Com Gengibre",
+                    "incluso": true
+                },
+                {
+                    "id": 78,
+                    "nome": "Geleia De Lim\u00e3o",
+                    "incluso": true
+                },
+                {
+                    "id": 79,
+                    "nome": "Geleia De P\u00eassego",
+                    "incluso": true
+                },
+                {
+                    "id": 80,
+                    "nome": "Geleia De P\u00eassego Com Gengibre",
+                    "incluso": true
+                },
+                {
+                    "id": 81,
+                    "nome": "Geleia De P\u00eassego Com Laranja",
+                    "incluso": true
+                },
+                {
+                    "id": 82,
+                    "nome": "Geleia De Tangerina Mexerica",
+                    "incluso": true
+                },
+                {
+                    "id": 83,
+                    "nome": "Geleia Tanja Laranja",
+                    "incluso": true
+                },
+                {
+                    "id": 1319,
+                    "nome": "Geleia de Pitanga",
+                    "incluso": false
+                }
+            ]
+        },
+        {
+            "id": 28,
+            "nome": "Caf\u00e9",
+            "produtos": null
+        },
+        {
+            "id": 29,
+            "nome": "Bebidas",
+            "produtos": [
+                {
+                    "id": 1021,
+                    "nome": "Kombucha de Ch\u00e1 Preto",
+                    "incluso": false
+                },
+                {
+                    "id": 1022,
+                    "nome": "Kombucha de Ch\u00e1 Preto e Lima da P\u00e9rsia",
+                    "incluso": false
+                },
+                {
+                    "id": 1023,
+                    "nome": "Kombucha de Ch\u00e1 Verde",
+                    "incluso": false
+                },
+                {
+                    "id": 1024,
+                    "nome": "Kombucha de Ch\u00e1 Verde e Abacaxi",
+                    "incluso": false
+                },
+                {
+                    "id": 1025,
+                    "nome": "Kombucha de Ch\u00e1 Verde e Alfazema",
+                    "incluso": false
+                },
+                {
+                    "id": 1026,
+                    "nome": "Kombucha de Ch\u00e1 Verde e Capim Lim\u00e3o",
+                    "incluso": false
+                },
+                {
+                    "id": 1027,
+                    "nome": "Kombucha de Hibisco",
+                    "incluso": false
+                },
+                {
+                    "id": 1028,
+                    "nome": "Kombucha de Hibisco e Guaco",
+                    "incluso": false
+                },
+                {
+                    "id": 1029,
+                    "nome": "Kombucha de Hibisco e Pitanga",
+                    "incluso": false
+                },
+                {
+                    "id": 1612,
+                    "nome": "Kombucha Sabor Gengibre",
+                    "incluso": false
+                },
+                {
+                    "id": 1613,
+                    "nome": "Kombucha Sabor Gengibre com C\u00farcuma",
+                    "incluso": false
+                },
+                {
+                    "id": 1614,
+                    "nome": "Kombucha Sabor Hibisco",
+                    "incluso": false
+                },
+                {
+                    "id": 1615,
+                    "nome": "Kombucha Sabor Uva",
+                    "incluso": false
+                },
+                {
+                    "id": 1825,
+                    "nome": "Cacha\u00e7a Maria Izabel",
+                    "incluso": false
+                },
+                {
+                    "id": 1826,
+                    "nome": "Cacha\u00e7a Premium Maria Izabel",
+                    "incluso": false
+                }
+            ]
+        },
+        {
+            "id": 30,
+            "nome": "Brusqueta",
+            "produtos": [
+                {
+                    "id": 1928,
+                    "nome": "Brusqueta de Shimeji, Br\u00f3colis e Requeij\u00e3o de Inhame",
+                    "incluso": false
+                }
+            ]
+        },
+        {
+            "id": 31,
+            "nome": "Minimamente processados",
+            "produtos": [
+                {
+                    "id": 1,
+                    "nome": "Alho Torrado",
+                    "incluso": true
+                },
+                {
+                    "id": 2,
+                    "nome": "Alho Torrado Com Sal",
+                    "incluso": true
+                },
+                {
+                    "id": 3,
+                    "nome": "Alho Picado",
+                    "incluso": true
+                },
+                {
+                    "id": 4,
+                    "nome": "Alho Picado Com Sal",
+                    "incluso": true
+                },
+                {
+                    "id": 5,
+                    "nome": "Banana Desidratada",
+                    "incluso": true
+                },
+                {
+                    "id": 6,
+                    "nome": "Caqui Desidratado",
+                    "incluso": true
+                },
+                {
+                    "id": 7,
+                    "nome": "C\u00farcuma Desidratada",
+                    "incluso": true
+                },
+                {
+                    "id": 8,
+                    "nome": "Gengibre Desidratado",
+                    "incluso": true
+                },
+                {
+                    "id": 9,
+                    "nome": "Macad\u00e2mia Desidratada",
+                    "incluso": true
+                },
+                {
+                    "id": 10,
+                    "nome": "P\u00eassego Desidratado",
+                    "incluso": true
+                },
+                {
+                    "id": 816,
+                    "nome": "Canela em Peda\u00e7os",
+                    "incluso": false
+                },
+                {
+                    "id": 817,
+                    "nome": "Canela em P\u00f3",
+                    "incluso": false
+                },
+                {
+                    "id": 818,
+                    "nome": "Coco Seco Desidratado",
+                    "incluso": false
+                },
+                {
+                    "id": 819,
+                    "nome": "Jaca Desidratada",
+                    "incluso": false
+                },
+                {
+                    "id": 820,
+                    "nome": "Tomate Cereja Desidratado",
+                    "incluso": false
+                },
+                {
+                    "id": 940,
+                    "nome": "\u00c1gua de Coco Verde Embalada",
+                    "incluso": false
+                },
+                {
+                    "id": 1320,
+                    "nome": "Palmito",
+                    "incluso": false
+                },
+                {
+                    "id": 1799,
+                    "nome": "C\u00farcuma em P\u00f3",
+                    "incluso": false
+                },
+                {
+                    "id": 1833,
+                    "nome": "Palmito Pupunha Tolete",
+                    "incluso": false
+                }
+            ]
+        },
+        {
+            "id": 32,
+            "nome": "Produtos org\u00e2nicos",
+            "produtos": [
+                {
+                    "id": 920,
+                    "nome": "Ra\u00e7\u00e3o Naturis Abate",
+                    "incluso": false
+                }
+            ]
+        },
+        {
+            "id": 33,
+            "nome": "Biscoitos",
+            "produtos": [
+                {
+                    "id": 11,
+                    "nome": "Biscoito De Aveia Com Gengibre",
+                    "incluso": true
+                },
+                {
+                    "id": 12,
+                    "nome": "Biscoito De Aveia Com Goiabada",
+                    "incluso": true
+                },
+                {
+                    "id": 13,
+                    "nome": "Biscoito De Bananada",
+                    "incluso": true
+                },
+                {
+                    "id": 14,
+                    "nome": "Biscoito De Gengibre",
+                    "incluso": true
+                },
+                {
+                    "id": 15,
+                    "nome": "Biscoito De Gergelim",
+                    "incluso": true
+                },
+                {
+                    "id": 16,
+                    "nome": "Biscoito De Goiabada",
+                    "incluso": true
+                },
+                {
+                    "id": 17,
+                    "nome": "Biscotti De Figo Verde",
+                    "incluso": true
+                },
+                {
+                    "id": 18,
+                    "nome": "Biscotti De Figo Verde E Laranja",
+                    "incluso": true
+                },
+                {
+                    "id": 19,
+                    "nome": "Biscotti De Laranja",
+                    "incluso": true
+                },
+                {
+                    "id": 768,
+                    "nome": "Biscoito de Aipim e Gergelim",
+                    "incluso": false
+                },
+                {
+                    "id": 769,
+                    "nome": "Biscoito de Arroz com C\u00farcuma e Pimenta",
+                    "incluso": false
+                },
+                {
+                    "id": 770,
+                    "nome": "Biscoito de Cacau",
+                    "incluso": false
+                },
+                {
+                    "id": 771,
+                    "nome": "Biscoito de Milho e Melado",
+                    "incluso": false
+                },
+                {
+                    "id": 1308,
+                    "nome": "Biscoito de Alho e Cheiro Verde",
+                    "incluso": false
+                },
+                {
+                    "id": 1309,
+                    "nome": "Biscoito de Arroz com Cacau",
+                    "incluso": false
+                },
+                {
+                    "id": 1310,
+                    "nome": "Biscoito de Arroz Temperado",
+                    "incluso": false
+                },
+                {
+                    "id": 1311,
+                    "nome": "Biscoito de Aveia e Alho",
+                    "incluso": false
+                },
+                {
+                    "id": 1312,
+                    "nome": "Biscoito de Aveia e Cacau",
+                    "incluso": false
+                },
+                {
+                    "id": 1313,
+                    "nome": "Biscoito de Aveia e Macad\u00e2mia",
+                    "incluso": false
+                },
+                {
+                    "id": 1314,
+                    "nome": "Biscoito de Cacau com Aveia e Macad\u00e2mia",
+                    "incluso": false
+                },
+                {
+                    "id": 1315,
+                    "nome": "Biscoito de Flocos de Arroz com Macad\u00e2mia",
+                    "incluso": false
+                },
+                {
+                    "id": 1316,
+                    "nome": "Sequilhos",
+                    "incluso": false
+                }
+            ]
+        },
+        {
+            "id": 34,
+            "nome": "Sorvetes",
+            "produtos": [
+                {
+                    "id": 1846,
+                    "nome": "Sorvete de Abacate",
+                    "incluso": false
+                },
+                {
+                    "id": 1847,
+                    "nome": "Sorvete de A\u00e7a\u00ed",
+                    "incluso": false
+                },
+                {
+                    "id": 1848,
+                    "nome": "Sorvete Banana Caramelada",
+                    "incluso": false
+                },
+                {
+                    "id": 1849,
+                    "nome": "Sorvete Caramelo",
+                    "incluso": false
+                },
+                {
+                    "id": 1850,
+                    "nome": "Sorvete Chococaf\u00e9",
+                    "incluso": false
+                },
+                {
+                    "id": 1851,
+                    "nome": "Sorvete de Chocolate",
+                    "incluso": false
+                },
+                {
+                    "id": 1852,
+                    "nome": "Sorvete de Coco",
+                    "incluso": false
+                },
+                {
+                    "id": 1853,
+                    "nome": "Sorvete Creme de Lim\u00e3o",
+                    "incluso": false
+                },
+                {
+                    "id": 1854,
+                    "nome": "Sorvete Doce de Leite",
+                    "incluso": false
+                },
+                {
+                    "id": 1855,
+                    "nome": "Sorvete Flor de Latte com Amora",
+                    "incluso": false
+                },
+                {
+                    "id": 1856,
+                    "nome": "Sorvete Frutas Vermelhas",
+                    "incluso": false
+                },
+                {
+                    "id": 1857,
+                    "nome": "Sorvete de Goiaba",
+                    "incluso": false
+                },
+                {
+                    "id": 1858,
+                    "nome": "Sorvete Jabuticaba",
+                    "incluso": false
+                },
+                {
+                    "id": 1859,
+                    "nome": "Sorvete de Jambo",
+                    "incluso": false
+                },
+                {
+                    "id": 1860,
+                    "nome": "Sorvete Limonada Rosa",
+                    "incluso": false
+                },
+                {
+                    "id": 1861,
+                    "nome": "Sorvete de Manga",
+                    "incluso": false
+                },
+                {
+                    "id": 1862,
+                    "nome": "Sorvete Morango ao Leite",
+                    "incluso": false
+                },
+                {
+                    "id": 1863,
+                    "nome": "Sorvete Romeu e Julieta",
+                    "incluso": false
+                }
+            ]
+        },
+        {
+            "id": 35,
+            "nome": "\u00d3leos Essenciais",
+            "produtos": null
+        },
+        {
+            "id": 36,
+            "nome": "Outros",
+            "produtos": null
+        },
+        {
+            "id": 37,
+            "nome": "Conservas, Extratos e Molhos",
+            "produtos": [
+                {
+                    "id": 794,
+                    "nome": "Conserva de Cocc\u00ednea",
+                    "incluso": false
+                },
+                {
+                    "id": 795,
+                    "nome": "Conserva de Milho Verde",
+                    "incluso": false
+                },
+                {
+                    "id": 796,
+                    "nome": "Conserva de Molho de Pimenta",
+                    "incluso": false
+                },
+                {
+                    "id": 797,
+                    "nome": "Conserva de Pimenta",
+                    "incluso": false
+                },
+                {
+                    "id": 798,
+                    "nome": "Conserva de Pimenta Biquinho",
+                    "incluso": false
+                },
+                {
+                    "id": 1338,
+                    "nome": "Conserva de Berinjelas",
+                    "incluso": false
+                },
+                {
+                    "id": 1339,
+                    "nome": "Conserva de Pepinos",
+                    "incluso": false
+                },
+                {
+                    "id": 1340,
+                    "nome": "Molho Escabeche",
+                    "incluso": false
+                },
+                {
+                    "id": 1341,
+                    "nome": "Molho de Tomate",
+                    "incluso": false
+                },
+                {
+                    "id": 1342,
+                    "nome": "Molho de Tomate com Azeitona",
+                    "incluso": false
+                },
+                {
+                    "id": 1343,
+                    "nome": "Molho de Tomate com Funghi",
+                    "incluso": false
+                },
+                {
+                    "id": 1344,
+                    "nome": "Molho de Tomate com Gengibre e Pimenta",
+                    "incluso": false
+                },
+                {
+                    "id": 1345,
+                    "nome": "Molho de Tomate com Manjeric\u00e3o",
+                    "incluso": false
+                },
+                {
+                    "id": 1346,
+                    "nome": "Vinagre de Cana de A\u00e7\u00facar",
+                    "incluso": false
+                }
+            ]
+        },
+        {
+            "id": 38,
+            "nome": "Past\u00e9is",
+            "produtos": [
+                {
+                    "id": 779,
+                    "nome": "Pastel de Berinjela",
+                    "incluso": false
+                },
+                {
+                    "id": 780,
+                    "nome": "Pastel de Frango",
+                    "incluso": false
+                },
+                {
+                    "id": 781,
+                    "nome": "Pastel de Palmito",
+                    "incluso": false
+                },
+                {
+                    "id": 782,
+                    "nome": "Pastel de Shiitake",
+                    "incluso": false
+                },
+                {
+                    "id": 1929,
+                    "nome": "Pastel de Shimeji, Br\u00f3colis e Requeij\u00e3o de Inhame",
+                    "incluso": false
+                },
+                {
+                    "id": 1930,
+                    "nome": "Pastel de Shiitake, Alho Por\u00f3 e Requeij\u00e3o de Inhame",
+                    "incluso": false
+                }
+            ]
+        },
+        {
+            "id": 39,
+            "nome": "P\u00e3o",
+            "produtos": [
+                {
+                    "id": 684,
+                    "nome": "P\u00e3o Baguete",
+                    "incluso": false
+                },
+                {
+                    "id": 685,
+                    "nome": "P\u00e3o de Alecrim",
+                    "incluso": false
+                },
+                {
+                    "id": 686,
+                    "nome": "P\u00e3o Dois Gr\u00e3os",
+                    "incluso": false
+                },
+                {
+                    "id": 687,
+                    "nome": "P\u00e3o Integral",
+                    "incluso": false
+                },
+                {
+                    "id": 688,
+                    "nome": "P\u00e3o Italiano",
+                    "incluso": false
+                },
+                {
+                    "id": 689,
+                    "nome": "P\u00e3o R\u00fastico",
+                    "incluso": false
+                }
+            ]
+        },
+        {
+            "id": 40,
+            "nome": "Congelados",
+            "produtos": [
+                {
+                    "id": 34,
+                    "nome": "Amora Preta Europ\u00e9ia Congelada",
+                    "incluso": true
+                },
+                {
+                    "id": 35,
+                    "nome": "Figo Congelado",
+                    "incluso": true
+                },
+                {
+                    "id": 36,
+                    "nome": "Framboesa Preta Congelada",
+                    "incluso": true
+                },
+                {
+                    "id": 37,
+                    "nome": "Suco Congelado De Amora Europeia",
+                    "incluso": true
+                },
+                {
+                    "id": 38,
+                    "nome": "Suco Congelado De Figo",
+                    "incluso": true
+                },
+                {
+                    "id": 39,
+                    "nome": "Suco Congelado De Framboesa Preta",
+                    "incluso": true
+                },
+                {
+                    "id": 40,
+                    "nome": "Suco Congelado De Goiaba",
+                    "incluso": true
+                },
+                {
+                    "id": 41,
+                    "nome": "Suco Congelado De P\u00eassego",
+                    "incluso": true
+                },
+                {
+                    "id": 42,
+                    "nome": "Uvaia Congelada",
+                    "incluso": true
+                }
+            ]
+        },
+        {
+            "id": 41,
+            "nome": "Farinhas",
+            "produtos": [
+                {
+                    "id": 774,
+                    "nome": "F\u00e9cula de Mandioca Hidratada",
+                    "incluso": false
+                },
+                {
+                    "id": 799,
+                    "nome": "Farinha de Abobrinha Verde",
+                    "incluso": false
+                },
+                {
+                    "id": 800,
+                    "nome": "Farinha de Berinjela",
+                    "incluso": false
+                },
+                {
+                    "id": 801,
+                    "nome": "Farinha de Biquinho",
+                    "incluso": false
+                },
+                {
+                    "id": 802,
+                    "nome": "Farinha de Casca de Jabuticaba",
+                    "incluso": false
+                },
+                {
+                    "id": 803,
+                    "nome": "Farinha de Casca de Maracuj\u00e1",
+                    "incluso": false
+                },
+                {
+                    "id": 804,
+                    "nome": "Farinha de Cocc\u00ednea",
+                    "incluso": false
+                },
+                {
+                    "id": 1685,
+                    "nome": "Farinha de Banana Verde",
+                    "incluso": false
+                }
+            ]
+        },
+        {
+            "id": 42,
+            "nome": "P\u00e3es",
+            "produtos": [
+                {
+                    "id": 778,
+                    "nome": "P\u00e3o de Trigo Integral",
+                    "incluso": false
+                },
+                {
+                    "id": 1800,
+                    "nome": "Grissini",
+                    "incluso": false
+                }
+            ]
+        },
+        {
+            "id": 43,
+            "nome": "Quiches",
+            "produtos": [
+                {
+                    "id": 783,
+                    "nome": "Quiche de Alho Porr\u00f3",
+                    "incluso": false
+                },
+                {
+                    "id": 784,
+                    "nome": "Quiche de Legumes ao Curry",
+                    "incluso": false
+                },
+                {
+                    "id": 785,
+                    "nome": "Quiche de Queijo com Cebola",
+                    "incluso": false
+                },
+                {
+                    "id": 786,
+                    "nome": "Quiche de Tofu com Legumes",
+                    "incluso": false
+                }
+            ]
+        },
+        {
+            "id": 44,
+            "nome": "Bolos",
+            "produtos": [
+                {
+                    "id": 20,
+                    "nome": "Bolo De Banana Com Doce De Casca De Laranja",
+                    "incluso": true
+                },
+                {
+                    "id": 21,
+                    "nome": "Bolo De Banana Com Amora Europ\u00e9ia",
+                    "incluso": true
+                },
+                {
+                    "id": 22,
+                    "nome": "Bolo De Banana Com Carambola",
+                    "incluso": true
+                },
+                {
+                    "id": 23,
+                    "nome": "Bolo De Banana Com Castanha Do Par\u00e1",
+                    "incluso": true
+                },
+                {
+                    "id": 24,
+                    "nome": "Bolo De Banana Com Doce De Casca De Laranja E Gengibre",
+                    "incluso": true
+                },
+                {
+                    "id": 25,
+                    "nome": "Bolo De Banana Com Framboesa Preta",
+                    "incluso": true
+                },
+                {
+                    "id": 26,
+                    "nome": "Bolo De Banana Com Gengibre",
+                    "incluso": true
+                },
+                {
+                    "id": 27,
+                    "nome": "Bolo De Banana Com Goiabada",
+                    "incluso": true
+                },
+                {
+                    "id": 28,
+                    "nome": "Bolo De Chocolate Com Banana",
+                    "incluso": true
+                },
+                {
+                    "id": 29,
+                    "nome": "Bolo De P\u00eassego",
+                    "incluso": true
+                },
+                {
+                    "id": 30,
+                    "nome": "Bolo De P\u00eassego Com Doce De Casca De Laranja",
+                    "incluso": true
+                },
+                {
+                    "id": 31,
+                    "nome": "Bolo De P\u00eassego Com Amora Europeia",
+                    "incluso": true
+                },
+                {
+                    "id": 32,
+                    "nome": "Bolo De P\u00eassego Com Framboesa Preta",
+                    "incluso": true
+                },
+                {
+                    "id": 33,
+                    "nome": "Bolo De P\u00eassego Com Gengibre",
+                    "incluso": true
+                },
+                {
+                    "id": 772,
+                    "nome": "Bolo de Cacau",
+                    "incluso": false
+                },
+                {
+                    "id": 773,
+                    "nome": "Brownie",
+                    "incluso": false
+                }
+            ]
+        }
+    ]
+}
