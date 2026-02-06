@@ -345,7 +345,7 @@ class colunaIndividual:
             coluna.lista.update()
 
             if seguinte_primeiro:
-                coluna.botao_novo.disabled = False if self.filtro[coluna.nome]['valor'] == 0 else True
+                coluna.botao_novo.disabled = True if self.filtro[coluna.nome]['valor'] == 0 else False
                 seguinte_primeiro = False
             else:
                 coluna.botao_novo.disabled = True
