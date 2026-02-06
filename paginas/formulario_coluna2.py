@@ -269,13 +269,13 @@ class verProdutos():
                 return escopoNaoSalvo(tipo=True, fechar_janela=self.fechar_janela_produtos).janela
 
         escopo = next(iter(self.dados_produtos))
-        dados_produtos = self.dados_produtos[escopo]
+        grupos_produtos = self.dados_produtos[escopo]
             
         self.coluna_produtos = ft.Column([], scroll=ft.ScrollMode.AUTO)
-        for grupo, produtos in dados_produtos.items():
-            lista_txt = ', '.join(sorted(produtos))
+        for grupo in grupos_produtos:
+            lista_txt = ', '.join(sorted(grupo['produtos']))
             subcoluna = ft.Column([
-                    ft.Text(grupo, size=16, weight="bold"),
+                    ft.Text(grupo['grupo'], size=16, weight="bold"),
                     ft.Text(lista_txt + '.'),
                     ft.Divider()
                 ])
