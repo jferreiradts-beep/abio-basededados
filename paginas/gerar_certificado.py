@@ -26,8 +26,7 @@ class obterDados:
 
     def obter_produtos(self):
         resposta = self.cliente.rpc('obter_produtos', {'p_escopo_id': self.escopo_id}).execute()
-        print(resposta.data)
-        return next(iter(resposta.data))
+        return resposta.data[next(iter(resposta.data))]
 
     def obter_associados_por_escopo(self):
         resposta = self.capa['associados']
@@ -140,22 +139,61 @@ class montarCertificado():
         buffer.seek(0)
         return buffer
 
-    def gerar_capa(self):
-        base = PdfReader("mapa/certificado_capa.pdf")
-        pag_base = base.pages[0]
-        buffer = self.criar_canvas_capa()
-        pag_base.merge_page(PdfReader(buffer).pages[0])
-        writer = PdfWriter()
-        writer.add_page(pag_base)
-        with open(f"certificado_capa_{self.escopo_id}.pdf", "wb") as f:
-            writer.write(f)
-    
-    def criar_canvas_produto(self):
-        print(self.dados.produtos)
+    def criar_caixas_produtos(self, altura = 400):
+        lista_caixas = {}
+        comprimento = 0
+        pagina = 0
+        lista_caixas[f'pagina_{pagina}'] = []
+        for produto in self.dados.produtos:
+            titulo = CaixaTexto(produto['grupo'], 700, fonte='Times-Bold')
+            lista_produtos = ', '.join(produto['produtos'])
+            lista_produtos = CaixaTexto(lista_produtos, 700)
+            
+            if comprimento + titulo.altura + lista_produtos.altura > altura:
+                comprimento = 0
+                pagina += 1
+                lista_caixas[f'pagina_{pagina}'] = []
 
+            lista_caixas[f'pagina_{pagina}'].append((titulo, lista_produtos))
+            comprimento += titulo.altura + lista_produtos.altura + 20
+
+        return lista_caixas
+
+    def criar_canvas_produto(self, pagina):
+        buffer = BytesIO()
+        can = canvas.Canvas(buffer, pagesize=landscape(A4))
+        linha = 460
+        for titulo, lista_produtos in pagina:
+            linha = titulo.fazer_caixa(can, 60, linha, 'esquerda')
+            linha = lista_produtos.fazer_caixa(can, 60, linha, 'justificado')
+            linha -= 20
+        can.save()
+        buffer.seek(0)
+        return buffer
+
+    def gerar_certificado(self):
+        writer = PdfWriter()
+        
+        # Criar capa
+        buffer = self.criar_canvas_capa()
+        base_capa = PdfReader("mapa/certificado_capa.pdf").pages[0]
+        base_capa.merge_page(PdfReader(buffer).pages[0])
+        writer.add_page(base_capa)
+
+        # Criar produtos
+        lista_caixas = self.criar_caixas_produtos()
+        for i, pagina in enumerate(lista_caixas):
+            buffer = self.criar_canvas_produto(lista_caixas[pagina])
+            base_produtos = PdfReader("mapa/certificado_produtos.pdf").pages[0]
+            base_produtos.merge_page(PdfReader(buffer).pages[0])
+            writer.add_page(base_produtos)
+        
+        # Salvar
+        with open(f"Outros/certificado_produto_{self.escopo_id}.pdf", "wb") as f:
+            writer.write(f)
 
 
 if __name__ == "__main__":
     cliente = login_supabase()
-    montarCertificado(cliente, 120).criar_canvas_produto()
+    montarCertificado(cliente, 246).gerar_certificado()
     

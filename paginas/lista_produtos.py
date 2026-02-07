@@ -311,9 +311,10 @@ class painelProdutos():
         )
 
 class linhaBotoes():
-    def __init__(self, page, dados):
+    def __init__(self, page, dados, verificar_selecionados):
         self.page = page
         self.dados = dados
+        self.verificar_selecionados = verificar_selecionados
         self.montar_linha_botoes()
 
     def novo_produto(self, opcoes_grupos):
@@ -325,7 +326,10 @@ class linhaBotoes():
         self.janela_novo_grupo.abrir_janela()
 
     def salvar_produtos(self, e):
-        print('salvar produtos')
+        produtos = self.verificar_selecionados()
+        self.page.cliente.rpc('atualizar_relacao_nm', {'p_tabela': 'rel_esc_prod', 'p_coluna_fixa': 'escopo_id',
+                                                        'p_valor_fixo': self.page.session.get('id'),
+                                                        'p_ids_opostos': produtos}).execute()
 
     def voltar(self, e):
         self.page.go('/formulario')
@@ -387,7 +391,7 @@ class baseProdutos():
         # 2️⃣ Painel de produtos
         self.escopo_descricao = metainformacaoEscopo(self.page, self.dados)
         self.painel_produtos = painelProdutos(self.page, self.dados)
-        self.linha_botoes = linhaBotoes(self.page, self.dados)
+        self.linha_botoes = linhaBotoes(self.page, self.dados, self.painel_produtos.verificar_produtos_selecionados)
         
         # 3️⃣ Layout principal
         layout = ft.Row([
