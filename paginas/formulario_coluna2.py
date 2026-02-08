@@ -1,8 +1,10 @@
 import flet as ft
 import pandas as pd
 import os
+import base64
 from datetime import datetime
 from formatar_campos import formatar_cpf_cnpj, formatar_data
+from gerar_certificado import montarCertificado
 
 
 def funcao_menu_lateral(page, *args):
@@ -470,6 +472,21 @@ class novaUProd():
         self.janela_nova_uprod.open = True
         self.page.update()
 
+
+class imprimirEscopo():
+    def __init__(self, page):
+        self.page = page
+        self.salvar_certificado()
+
+    def salvar_certificado(self):
+        certificado = montarCertificado(self.page.cliente, self.page.session.get('id'))
+        buffer_pdf = certificado.gerar_certificado()
+        
+        pdf_base64 = base64.b64encode(buffer_pdf).decode('utf-8')
+        data_url = f"data:application/pdf;base64,{pdf_base64}"
+        self.page.launch_url(url=data_url, web_window_name="_blank")
+        
+        
 class menuEscopo():
     def __init__(self, page, dados, atualizar_formulario):
         self.page = page
@@ -477,7 +494,6 @@ class menuEscopo():
         self.atualizar_formulario = atualizar_formulario
         self.opcoes_mun_estados = None  # <-- inicializa a variavel; carrega quando estiver pronto,
                                         # a partir do formulario base
-
         self.menu = self.montar_menu()
 
 
@@ -500,8 +516,8 @@ class menuEscopo():
         nomesCertificado(self.page)
 
     def imprimir_certificado(self, e):
-        print('imprimir_certificado')        
-
+        imprimirEscopo(self.page)
+        
     def ficha_rastrabilidade_individual(self, e):
         print('ficha_rastrabilidade_individual')
         

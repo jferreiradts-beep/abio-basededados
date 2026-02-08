@@ -44,26 +44,31 @@ class obterDados:
 
 class CaixaTexto:
     def __init__(self, texto, largura, fonte='Times-Roman', pontos = 16):
-        self.texto = texto
+        self.texto = texto.strip()
         self.largura = largura
         self.fonte = fonte
         self.pontos = pontos
-        self.linhas, self.altura = self.quebrar_texto()
+        self.linhas, self.altura, self.largura_texto = self.quebrar_texto()
 
     def quebrar_texto(self):
         palavras = self.texto.split()
         linhas = []
         linha_atual = ''
+        largura_texto = 0
         
         for palavra in palavras:
-            if stringWidth(linha_atual + palavra, self.fonte, self.pontos) > self.largura:
+            largura = stringWidth(linha_atual + palavra, self.fonte, self.pontos)
+            if largura > self.largura:
                 linhas.append(linha_atual)
                 linha_atual = palavra
+                
             else:
                 linha_atual += ' ' + palavra
+                largura_texto = largura if largura > largura_texto else largura_texto
+        
         linhas.append(linha_atual)
 
-        return linhas, len(linhas) * self.pontos * 1.2
+        return linhas, len(linhas) * self.pontos * 1.2, int(largura_texto) + 1
 
     def fazer_caixa(self, can, x, y, alinhamento = 'esquerda'):
         can.setFont(self.fonte, self.pontos)
@@ -146,7 +151,7 @@ class montarCertificado():
         lista_caixas[f'pagina_{pagina}'] = []
         for produto in self.dados.produtos:
             titulo = CaixaTexto(produto['grupo'], 700, fonte='Times-Bold')
-            lista_produtos = ', '.join(produto['produtos'])
+            lista_produtos = ', '.join(produto['produtos']) + ' //-----------------//'
             lista_produtos = CaixaTexto(lista_produtos, 700)
             
             if comprimento + titulo.altura + lista_produtos.altura > altura:
@@ -162,6 +167,23 @@ class montarCertificado():
     def criar_canvas_produto(self, pagina):
         buffer = BytesIO()
         can = canvas.Canvas(buffer, pagesize=landscape(A4))
+        
+        # Dados à esquerda: matrícula e validade
+        linha = CaixaTexto(f"Matrícula: {self.dados.capa['matricula']}", 700, pontos=10).fazer_caixa(can, 60, 520, 'esquerda')
+        validade = datetime.strptime(self.dados.capa['data_emissao'], '%Y-%m-%d') + relativedelta(years=1) - timedelta(days=1)
+        linha = CaixaTexto(f"Validade: {validade.strftime('%d/%m/%Y')}", 700, pontos=10).fazer_caixa(can, 60, linha, 'esquerda')
+
+        # Dados à direita: produtores
+        linha = 520
+        caixas_produtores = [CaixaTexto(f"Produtor(es):", 700, fonte='Times-Bold', pontos=10)]
+        for produtor in self.dados.capa['associados']:
+            caixas_produtores.append(CaixaTexto(produtor['nome'], 700, pontos=10))
+
+        posicao = 60 + 700 - max(caixa.largura_texto for caixa in caixas_produtores)
+        for caixa in caixas_produtores:
+            linha = caixa.fazer_caixa(can, posicao, linha, 'esquerda')        
+
+        # Produtos
         linha = 460
         for titulo, lista_produtos in pagina:
             linha = titulo.fazer_caixa(can, 60, linha, 'esquerda')
@@ -189,11 +211,17 @@ class montarCertificado():
             writer.add_page(base_produtos)
         
         # Salvar
+        buffer_final = BytesIO()
+        writer.write(buffer_final)
+        buffer_final.seek(0)
+        return buffer_final.getvalue()
+
+    def imprimir_certificado(self):
         with open(f"Outros/certificado_produto_{self.escopo_id}.pdf", "wb") as f:
-            writer.write(f)
+            f.write(self.gerar_certificado())
 
 
 if __name__ == "__main__":
     cliente = login_supabase()
-    montarCertificado(cliente, 246).gerar_certificado()
+    montarCertificado(cliente, 246).imprimir_certificado()
     
