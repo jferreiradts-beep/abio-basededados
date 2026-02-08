@@ -1,6 +1,5 @@
 import flet as ft
 import pandas as pd
-import os
 import base64
 from datetime import datetime
 from formatar_campos import formatar_cpf_cnpj, formatar_data
