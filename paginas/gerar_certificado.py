@@ -224,5 +224,5 @@ class montarCertificado():
 
 if __name__ == "__main__":
     cliente = login_supabase()
-    montarCertificado(cliente, 65).imprimir_certificado()
+    montarCertificado(cliente, 111).imprimir_certificado()
     

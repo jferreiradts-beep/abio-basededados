@@ -269,8 +269,9 @@ class verProdutos():
             else:
                 return escopoNaoSalvo(tipo=True, fechar_janela=self.fechar_janela_produtos).janela
 
-        escopo = next(iter(self.dados_produtos))
-        grupos_produtos = self.dados_produtos[escopo]
+        print(f'produtos: {self.page.session.get("tipo_escopo")} - {self.page.session.get("nome_escopo")}')
+        escopo = self.page.session.get('tipo_escopo')
+        grupos_produtos = self.dados_produtos.get(str(escopo), [])
             
         self.coluna_produtos = ft.Column([], scroll=ft.ScrollMode.AUTO)
         for grupo in grupos_produtos:
@@ -284,7 +285,7 @@ class verProdutos():
 
         # Criar janela
         janela = ft.AlertDialog(
-            title=ft.Text(escopo),
+            title=ft.Text(self.page.session.get("nome_escopo")),
             content=ft.Container(
                 width=560, height=400,
                 content=self.coluna_produtos

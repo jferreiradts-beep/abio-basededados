@@ -115,13 +115,16 @@ class estruturaDeCampos():
             valor = re.sub(r'\D', '', e.control.value) if chave == 'cpf' else e.control.value
             self.resposta['dados_fixos'][chave] = valor
 
-            if metainformacao == 'Tipo de escopo':
+            if metainformacao['rotulo'] == 'Tipo de escopo':
                 self.page.session.set("tipo_escopo", e.control.value)
+                nome_label = next(opcao['nome'] for opcao in opcoes if opcao['id'] == int(e.control.value))
+                self.page.session.set("nome_escopo", nome_label)
 
         campo = ft.Text(metainformacao['rotulo'], width=largura[0], weight="bold")
         if len(opcoes) > 0:
             opcoes_lista = []
             encurtar = len(opcoes) > 6
+            opcoes = sorted(opcoes, key=lambda x: x['nome'])
             for opcao in opcoes:
                 nome = opcao['nome'].split(' ')[0]+ ' ' + opcao['nome'].split(' ')[-1] if encurtar else opcao['nome']
                 opcoes_lista.append(ft.dropdown.Option(key=opcao['id'], text=nome))
@@ -139,6 +142,8 @@ class estruturaDeCampos():
 
         if metainformacao['rotulo'] == 'Tipo de escopo':
             self.page.session.set("tipo_escopo", valor_inicial)
+            nome_label = [opcao['nome'] for opcao in opcoes if opcao['id'] == valor_inicial][0]
+            self.page.session.set("nome_escopo", nome_label)
 
         return ft.Row([campo,valor], alignment=ft.MainAxisAlignment.CENTER, spacing=10)
 
