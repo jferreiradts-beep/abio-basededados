@@ -121,13 +121,14 @@ class montarCertificado():
         buffer = BytesIO()
         can = canvas.Canvas(buffer, pagesize=landscape(A4))
 
-        linha = CaixaTexto(self.dados.linha_associados, 700).fazer_caixa(can, 60, 360, 'centro')
+        linha = CaixaTexto(self.dados.linha_associados, 700).fazer_caixa(can, 60, 380, 'centro')
         linha = CaixaTexto("Produtor(a)", 700, pontos=10).fazer_caixa(can, 60, linha+5, 'centro')
-        linha = CaixaTexto(self.dados.capa['matricula'], 700, fonte='Times-Bold').fazer_caixa(can, 60, linha-10, 'centro')
-        linha = CaixaTexto("Matrícula", 700, pontos=10).fazer_caixa(can, 60, linha+5, 'centro')
-
+        linha = CaixaTexto(f"Matrícula: {self.dados.capa['matricula']}", 700, pontos=14).fazer_caixa(can, 60, linha-5, 'centro')
+        linha = CaixaTexto(self.dados.capa['unidade_producao'], 700, fonte='Times-Bold').fazer_caixa(can, 60, linha-5, 'centro')
+        linha = CaixaTexto("Unidade de produção", 700, pontos=10).fazer_caixa(can, 60, linha+5, 'centro')
+        
         endereco = f"{self.dados.capa['endereco']} - {self.dados.capa['municipio']} - {self.dados.capa['estado']}"
-        linha = CaixaTexto(endereco, 700, fonte='Times-Bold').fazer_caixa(can, 60, linha-20, 'centro')
+        linha = CaixaTexto(endereco, 700, fonte='Times-Bold').fazer_caixa(can, 60, linha-10, 'centro')
 
         mensagem = f"A ABIO - ASSOCIAÇÃO DE AGRICULTORES BIOLÓGICOS DO ESTADO DO RIO DE JANEIRO - CERTIFICA O(S) PRODUTOR(ES) ACIMA NO ESCOPO DE {self.dados.capa['tipo_certificado'].upper()}, DE ACORDO COM A LEI 10.831 DE 23 DE DEZEMBRO DE 2003, COM O DECRETO 6.323 DE 27 DE DEZEMBRO DE 2007 E COM A PORTARIA 52 DE 15 DE MARÇO DE 2021, CONFORME A LISTAGEM NO VERSO."
         linha = CaixaTexto(mensagem, 700, fonte='Times-Bold', pontos=14).fazer_caixa(can, 60, linha-20, 'justificado')
@@ -223,5 +224,5 @@ class montarCertificado():
 
 if __name__ == "__main__":
     cliente = login_supabase()
-    montarCertificado(cliente, 246).imprimir_certificado()
+    montarCertificado(cliente, 65).imprimir_certificado()
     
