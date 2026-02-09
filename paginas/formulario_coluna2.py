@@ -23,7 +23,6 @@ class escopoNaoSalvo():
     def __init__(self, tipo = False, fechar_janela = None):
         self.fechar_janela = fechar_janela
         self.tipo = tipo
-        print(self.tipo)
         self.janela = self.montar_janela()
 
     def montar_janela(self):
@@ -34,8 +33,6 @@ class escopoNaoSalvo():
             self.aviso = ft.Text(aviso_tipo)
         else:
             self.aviso = ft.Text(aviso)
-        
-        print(self.aviso)
         
         return ft.AlertDialog(
             title=ft.Text("Atenção!"),
@@ -269,7 +266,6 @@ class verProdutos():
             else:
                 return escopoNaoSalvo(tipo=True, fechar_janela=self.fechar_janela_produtos).janela
 
-        print(f'produtos: {self.page.session.get("tipo_escopo")} - {self.page.session.get("nome_escopo")}')
         escopo = self.page.session.get('tipo_escopo')
         grupos_produtos = self.dados_produtos.get(str(escopo), [])
             

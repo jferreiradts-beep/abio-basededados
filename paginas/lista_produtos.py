@@ -145,7 +145,16 @@ class janelaNovoProduto():
         self.opcoes_grupos = opcoes_grupos
 
     def salvar(self, e):
-        pass
+        tabela = 'produto' if self.tipo == 'produto' else 'grupo_prod'
+        try:
+            self.cliente.table(tabela).insert({'nome': self.novo_nome.value}).execute()
+            self.atualizar_painel()
+            self.cancelar(e)
+        except Exception as error:
+            print(error)
+            self.page.snack_bar = ft.SnackBar(ft.Text(f"Erro ao salvar: {error}"), bgcolor="red")
+            self.page.snack_bar.open = True
+            self.page.update()
 
     def cancelar(self, e):
         self.janela.open = False
@@ -156,7 +165,8 @@ class janelaNovoProduto():
         if self.tipo == 'produto':
             self.pertence = ft.Dropdown(label='Grupo', options=[ft.dropdown.Option(g) for g in self.opcoes_grupos])
         else:
-            self.pertence = ft.Text("Nome")
+            nome_escopo = self.page.session.get('nome_escopo') or 'Teste'
+            self.pertence = ft.Text(nome_escopo, size=18, weight="bold")
         
         self.novo_nome = ft.TextField(label="Nome")
         self.conteiner_nome = ft.Container(
@@ -322,7 +332,7 @@ class linhaBotoes():
         self.janela_novo_produto.abrir_janela()
 
     def novo_grupo(self, e):
-        self.janela_novo_grupo = janelaNovoProduto(self.page, tipo='grupo')
+        self.janela_novo_grupo = janelaNovoProduto(self.page, [], tipo='grupo')
         self.janela_novo_grupo.abrir_janela()
 
     def salvar_produtos(self, e):
