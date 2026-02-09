@@ -42,7 +42,7 @@ class DialogoEditarControle():
         self.janela.update()
 
     def salvar(self, e):
-        tabela = 'produto' if self.tipo == 'produto' else 'grupo_prod'
+        tabela = 'produtos' if self.tipo == 'produto' else 'grupo_prod'
         try:
             self.cliente.table(tabela).update({'nome': self.nome_corrigido.value}).eq('id', self.controle_id).execute()
             self.controle.value = self.nome_corrigido.value
@@ -75,7 +75,7 @@ class DialogoEditarControle():
     def confirmar(self, e, txt_escreva):
         if txt_escreva == 'ELIMINAR':
             try:
-                self.cliente.table('produto').delete().eq('id', self.controle_id).execute()
+                self.cliente.table('produtos').delete().eq('id', self.controle_id).execute()
                 self.atualizar_painel()
                 self.fechar()
             except Exception as error:
@@ -138,18 +138,26 @@ class DialogoEditarControle():
         self.janela.update()
 
 class janelaNovoProduto():
-    def __init__(self, page, opcoes_grupos, tipo= 'produto'):
+    def __init__(self, page, opcoes_grupos, atualizar_painel, tipo= 'produto'):
         self.page = page
         self.cliente = page.cliente
         self.tipo = tipo
         self.opcoes_grupos = opcoes_grupos
+        self.atualizar_painel = atualizar_painel
 
     def salvar(self, e):
-        tabela = 'produto' if self.tipo == 'produto' else 'grupo_prod'
+        if self.tipo == 'produto':
+            tabela = 'produtos'
+            dados = {'nome': self.novo_nome.value, 'grupo_id': self.pertence.value}
+        else:
+            tabela = 'grupo_prod'
+            dados = {'nome': self.novo_nome.value, 'tipo_escopo_id': self.page.get_session('tipo_escopo')}
+       
         try:
-            self.cliente.table(tabela).insert({'nome': self.novo_nome.value}).execute()
-            self.atualizar_painel()
+            resposta = self.cliente.table(tabela).insert(dados).execute()
             self.cancelar(e)
+            self.atualizar_painel()
+            print(resposta)
         except Exception as error:
             print(error)
             self.page.snack_bar = ft.SnackBar(ft.Text(f"Erro ao salvar: {error}"), bgcolor="red")
@@ -163,7 +171,8 @@ class janelaNovoProduto():
     def montar_janela(self):
         txt_titulo = 'Novo produto:' if self.tipo == 'produto' else 'Novo grupo:'
         if self.tipo == 'produto':
-            self.pertence = ft.Dropdown(label='Grupo', options=[ft.dropdown.Option(g) for g in self.opcoes_grupos])
+            opcoes = [ft.dropdown.Option(key=g['id'], text=g['nome']) for g in self.opcoes_grupos]
+            self.pertence = ft.Dropdown(label='Grupo', options=opcoes)
         else:
             nome_escopo = self.page.session.get('nome_escopo') or 'Teste'
             self.pertence = ft.Text(nome_escopo, size=18, weight="bold")
@@ -321,14 +330,15 @@ class painelProdutos():
         )
 
 class linhaBotoes():
-    def __init__(self, page, dados, verificar_selecionados):
+    def __init__(self, page, dados, verificar_selecionados, atualizar_painel):
         self.page = page
         self.dados = dados
         self.verificar_selecionados = verificar_selecionados
+        self.atualizar_painel = atualizar_painel
         self.montar_linha_botoes()
 
     def novo_produto(self, opcoes_grupos):
-        self.janela_novo_produto = janelaNovoProduto(self.page, opcoes_grupos)
+        self.janela_novo_produto = janelaNovoProduto(self.page, opcoes_grupos, self.atualizar_painel)
         self.janela_novo_produto.abrir_janela()
 
     def novo_grupo(self, e):
@@ -345,9 +355,8 @@ class linhaBotoes():
         self.page.go('/formulario')
 
     def montar_botoes(self):
-        opcoes_grupos = [g['nome'] for g in self.dados.lista_produtos]
         return ft.Row([
-            ft.ElevatedButton('Novo produto', width=150, on_click=lambda e: self.novo_produto(opcoes_grupos)),
+            ft.ElevatedButton('Novo produto', width=150, on_click=lambda e: self.novo_produto(self.dados.lista_produtos)),
             ft.ElevatedButton('Novo grupo', width=150, on_click=self.novo_grupo),
             ft.ElevatedButton("Salvar", width=150, on_click=self.salvar_produtos),
             ft.ElevatedButton("Voltar", width=150, on_click=self.voltar)
@@ -401,7 +410,7 @@ class baseProdutos():
         # 2️⃣ Painel de produtos
         self.escopo_descricao = metainformacaoEscopo(self.page, self.dados)
         self.painel_produtos = painelProdutos(self.page, self.dados)
-        self.linha_botoes = linhaBotoes(self.page, self.dados, self.painel_produtos.verificar_produtos_selecionados)
+        self.linha_botoes = linhaBotoes(self.page, self.dados, self.painel_produtos.verificar_produtos_selecionados, self.painel_produtos.atualizar_painel)
         
         # 3️⃣ Layout principal
         layout = ft.Row([
