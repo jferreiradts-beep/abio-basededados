@@ -222,6 +222,15 @@ class montarCertificado():
             f.write(self.gerar_certificado())
 
 
+class montarFRI():
+    def __init__(self, cliente, escopo_id):
+        self.cliente = cliente
+        self.escopo_id = escopo_id
+        self.dados = obterDados(self.cliente, self.escopo_id)
+
+    def montar_cabecalho(self):
+        pass
+
 if __name__ == "__main__":
     cliente = login_supabase()
     montarCertificado(cliente, 111).imprimir_certificado()

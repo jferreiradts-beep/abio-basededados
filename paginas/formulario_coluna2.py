@@ -452,15 +452,13 @@ class novaUProd():
             self.dados['opcoes']['uprod_id'].append({'id': novo_id, 'nome': dados['nome']})
             self.dados['dados_fixos']['uprod_id'] = novo_id
 
+            self.cancelar_uprod(None)
+            aviso(self.page, f"Unidade de produção criada com sucesso! ID: {novo_id}")
             self.atualizar_formulario()
-            self.page.snack_bar = ft.SnackBar(ft.Text(f"Unidade de produção criada com sucesso! ID: {novo_id}") )
 
         except Exception as e:
-            self.page.snack_bar = ft.SnackBar( ft.Text(f"Erro ao criar rotulo: {e}"), bgcolor="red" )
-
-        finally:
             self.cancelar_uprod(None)
-            self.page.snack_bar.open = True
+            aviso(self.page, f"Erro ao criar unidade de produção: {e}")
 
     def exibir_janela_nova_uprod(self):
         self.janela_nova_uprod = self.montar_janela_nova_uprod()

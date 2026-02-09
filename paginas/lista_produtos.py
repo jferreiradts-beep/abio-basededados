@@ -1,5 +1,5 @@
 import flet as ft
-from escudo_supabase import login_supabase
+from escudo_supabase import login_supabase, aviso
 
 
 class DialogoEditarControle():
@@ -49,10 +49,7 @@ class DialogoEditarControle():
             self.controle.update()
             self.fechar()
         except Exception as error:
-            print(error)
-            self.page.snack_bar = ft.SnackBar(ft.Text(f"Erro ao salvar: {error}"), bgcolor="red")
-            self.page.snack_bar.open = True
-            self.page.update()
+            aviso(self.page, f"Erro ao salvar: {error}")
 
     def cancelar(self, e):
         self.fechar()
@@ -79,14 +76,7 @@ class DialogoEditarControle():
                 self.atualizar_painel()
                 self.fechar()
             except Exception as error:
-                print(error)
-                self.page.snack_bar = ft.SnackBar(ft.Text(f"Erro ao eliminar: {error}"), bgcolor="red")
-                self.page.snack_bar.open = True
-                self.page.update()
-        else:
-            self.page.snack_bar = ft.SnackBar(ft.Text("Texto incorreto"))
-            self.page.snack_bar.open = True
-            self.page.update()
+                aviso(self.page, f"Erro ao eliminar: {error}")
 
     def eliminar(self, e):
         self.conteiner_nome.height = 200
@@ -159,10 +149,7 @@ class janelaNovoProduto():
             self.atualizar_painel()
             print(resposta)
         except Exception as error:
-            print(error)
-            self.page.snack_bar = ft.SnackBar(ft.Text(f"Erro ao salvar: {error}"), bgcolor="red")
-            self.page.snack_bar.open = True
-            self.page.update()
+            aviso(self.page, f"Erro ao salvar: {error}")
 
     def cancelar(self, e):
         self.janela.open = False
@@ -347,9 +334,13 @@ class linhaBotoes():
 
     def salvar_produtos(self, e):
         produtos = self.verificar_selecionados()
-        self.page.cliente.rpc('atualizar_relacao_nm', {'p_tabela': 'rel_esc_prod', 'p_coluna_fixa': 'escopo_id',
-                                                        'p_valor_fixo': self.page.session.get('id'),
-                                                        'p_ids_opostos': produtos}).execute()
+        try:
+            self.page.cliente.rpc('atualizar_relacao_nm', {'p_tabela': 'rel_esc_prod', 'p_coluna_fixa': 'escopo_id',
+                                                            'p_valor_fixo': self.page.session.get('id'),
+                                                            'p_ids_opostos': produtos}).execute()
+            aviso(self.page, "Produtos salvos com sucesso")
+        except Exception as error:
+            aviso(self.page, f"Erro ao salvar: {error}")
 
     def voltar(self, e):
         self.page.go('/formulario')

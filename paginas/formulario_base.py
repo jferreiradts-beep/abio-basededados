@@ -2,7 +2,7 @@ import flet as ft
 import pandas as pd
 import os
 from formulario_coluna2 import funcao_menu_lateral  
-from escudo_supabase import login_supabase
+from escudo_supabase import login_supabase, aviso
 from formatar_campos import formatar_cpf_cnpj
 import re
             
@@ -48,15 +48,14 @@ class janelaNovoRotulo():
             novo_id = salvar_rotulo.data[0]['id']
             self.resposta['campos_ajustaveis'].append({'id': novo_id, 'nome': self.nome_novo_rotulo.value})
 
+            self.cancelar_novo_rotulo(None)
             self.atualizar_estrutura_de_campos()
-            self.page.snack_bar = ft.SnackBar(ft.Text(f"Rotulo criado com sucesso! ID: {novo_id}") )
+            aviso(self.page, f"Rotulo criado com sucesso! ID: {novo_id}")
 
         except Exception as e:
-            self.page.snack_bar = ft.SnackBar( ft.Text(f"Erro ao criar rotulo: {e}"), bgcolor="red" )
-        
-        finally:
             self.cancelar_novo_rotulo(None)
-            self.page.snack_bar.open = True
+            aviso(self.page, f"Erro ao criar rotulo: {e}")
+        
 
 class botoesFormulario():
     def __init__(self, page, resposta, ver_janela_nrotulo, atualizar_estrutura_de_campos):
