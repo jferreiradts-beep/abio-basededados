@@ -1,6 +1,6 @@
 from reportlab.pdfgen import canvas
 from reportlab.pdfbase.pdfmetrics import stringWidth
-from reportlab.lib.pagesizes import A4, landscape
+from reportlab.lib.pagesizes import A4, landscape, portrait
 from pypdf import PdfReader, PdfWriter
 from io import BytesIO
 from datetime import datetime, timedelta
@@ -9,8 +9,6 @@ from dateutil.relativedelta import relativedelta
 from escudo_supabase import login_supabase
 from formatar_campos import formatar_cpf_cnpj
 
-
-        
 
 class obterDados:
     def __init__(self, cliente, escopo_id):
@@ -199,7 +197,8 @@ class montarCertificado():
         
         # Criar capa
         buffer = self.criar_canvas_capa()
-        base_capa = PdfReader("mapa/certificado_capa.pdf").pages[0]
+        base_capa = PdfReader("mapa/certificado_capa.pdf")
+        base_capa = base_capa.pages[0]
         base_capa.merge_page(PdfReader(buffer).pages[0])
         writer.add_page(base_capa)
 
@@ -207,7 +206,8 @@ class montarCertificado():
         lista_caixas = self.criar_caixas_produtos()
         for i, pagina in enumerate(lista_caixas):
             buffer = self.criar_canvas_produto(lista_caixas[pagina])
-            base_produtos = PdfReader("mapa/certificado_produtos.pdf").pages[0]
+            base_produtos = PdfReader("mapa/certificado_produtos.pdf")
+            base_produtos = base_produtos.pages[0]
             base_produtos.merge_page(PdfReader(buffer).pages[0])
             writer.add_page(base_produtos)
         
@@ -229,9 +229,132 @@ class montarFRI():
         self.dados = obterDados(self.cliente, self.escopo_id)
 
     def montar_cabecalho(self):
-        pass
+        buffer = BytesIO()
+        can = canvas.Canvas(buffer, pagesize=portrait(A4))
+        
+        linha = CaixaTexto(self.dados.capa['unidade_producao'], 410, fonte='Times-Bold').fazer_caixa(can, 130, 750, 'centro')
+        endereco = f"{self.dados.capa['endereco']} - {self.dados.capa['municipio']} - {self.dados.capa['estado']}"
+        linha = CaixaTexto(endereco, 410, pontos=12).fazer_caixa(can, 130, linha)
+
+        linha, largura = linha, 130
+        caixa_mat_rotulo = CaixaTexto('Matrícula:', 410, fonte ='Times-Bold', pontos=12)
+        caixa_mat_rotulo.fazer_caixa(can, largura, linha)
+        largura += caixa_mat_rotulo.largura_texto + 5
+        caixa_mat = CaixaTexto(self.dados.capa['matricula'], 410, pontos=12)
+        caixa_mat.fazer_caixa(can, largura, linha)
+        largura += caixa_mat.largura_texto + 20
+        
+        caixa_escopo_rotulo = CaixaTexto('Escopo:', 410, fonte='Times-Bold', pontos=12)
+        caixa_escopo_rotulo.fazer_caixa(can, largura, linha)
+        largura += caixa_escopo_rotulo.largura_texto + 5
+        caixa_escopo = CaixaTexto(self.dados.capa['tipo_certificado'], 410, pontos=12)
+        caixa_escopo.fazer_caixa(can, largura, linha)
+        
+        linha_ass = CaixaTexto('Associado(s):', 160, fonte='Times-Bold', pontos= 12).fazer_caixa(can, 40, linha - 30)
+        linha_ass -= 5
+        for associado in self.dados.capa['associados']:
+            linha_ass = CaixaTexto(associado['nome'], 160, pontos=12).fazer_caixa(can, 40, linha_ass)
+
+        linha_gc = CaixaTexto('Grupo de Comercialização:', 200, fonte='Times-Bold', pontos=12).fazer_caixa(can, 200, linha-30)
+        CaixaTexto('Data:', 100, fonte='Times-Bold', pontos=12).fazer_caixa(can, 460, linha-30)
+
+        can.roundRect(200, linha_gc - 20, 240, 25, 5, stroke=1, fill=0)
+        can.roundRect(460, linha_gc - 20, 100, 25, 5, stroke=1, fill=0)
+
+        linha = min(linha_ass + 12 * 1.2, linha_gc) - 20
+        can.line(40, linha, 560, linha)
+        can.line(40, linha-2, 560, linha-2)
+
+        linha = linha - 20
+        CaixaTexto('Produtos', 100, fonte='Times-Bold', pontos=12).fazer_caixa(can, 40, linha)
+        CaixaTexto('Und.', 100, fonte='Times-Bold', pontos=12).fazer_caixa(can, 200, linha)
+        CaixaTexto('Qtd', 100, fonte='Times-Bold', pontos=12).fazer_caixa(can, 240, linha)
+
+        coluna = 560 / 2 + 5
+        CaixaTexto('Produtos', 100, fonte='Times-Bold', pontos=12).fazer_caixa(can, coluna + 5, linha)
+        CaixaTexto('Und.', 100, fonte='Times-Bold', pontos=12).fazer_caixa(can, coluna + 200, linha)
+        CaixaTexto('Qtd', 100, fonte='Times-Bold', pontos=12).fazer_caixa(can, coluna + 240, linha)
+
+        can.save()
+        buffer.seek(0)
+        return buffer, linha
+
+
+    def gerar_fri(self):
+        writer = PdfWriter()
+
+        lista_produtos = []
+        for produto in self.dados.produtos:
+            lista_produtos.extend(produto['produtos'])
+        lista_produtos = sorted(lista_produtos)
+
+        buffer_cab, linha_cab = self.montar_cabecalho()
+        buffer_cab.seek(0)
+        linha = linha_cab - 20
+
+        buffer_produtos = BytesIO()
+        can = canvas.Canvas(buffer_produtos, pagesize=portrait(A4))
+        coluna = 560 / 2 + 5
+        i = 0
+
+        for i in range(0, len(lista_produtos), 2):
+            produto1 = lista_produtos[i]
+            produto2 = lista_produtos[i+1] if i+1 < len(lista_produtos) else None
+            
+            p1_dados = CaixaTexto(produto1, 145, pontos=12)
+            linha1 = p1_dados.fazer_caixa(can, 40, linha)
+            can.roundRect(200, linha -2, 30, 15, 5, stroke=1, fill=0)
+            can.roundRect(240, linha -2, 35, 15, 5, stroke=1, fill=0)
+
+            if produto2:
+                p2_dados = CaixaTexto(produto2, 145, pontos=12)
+                linha2 = p2_dados.fazer_caixa(can, coluna +5, linha)
+                can.roundRect(coluna + 200, linha -2, 30, 15, 5, stroke=1, fill=0)
+                can.roundRect(coluna + 240, linha -2, 35, 15, 5, stroke=1, fill=0)
+
+            linha = min(linha1, linha2) - 5 if produto2 else linha1 - 5
+
+            if linha < 100:
+                can.save()
+                buffer_produtos.seek(0)
+                
+                # Mescla as páginas
+                base_fri = PdfReader("mapa/modelo_FRI.pdf")
+                base_fri = base_fri.pages[0]
+                base_fri.merge_page(PdfReader(buffer_cab).pages[0])
+                base_fri.merge_page(PdfReader(buffer_produtos).pages[0])
+                writer.add_page(base_fri)
+
+                # Reinicia o buffer
+                buffer_produtos = BytesIO()
+                can = canvas.Canvas(buffer_produtos, pagesize=portrait(A4))
+                buffer_cab, linha_cab = self.montar_cabecalho()
+                buffer_cab.seek(0)
+                linha = linha_cab - 20
+            
+        can.save()
+        buffer_produtos.seek(0)
+        
+        # Mescla as páginas
+        base_fri = PdfReader("mapa/modelo_FRI.pdf")
+        base_fri = base_fri.pages[0]
+        base_fri.merge_page(PdfReader(buffer_cab).pages[0])
+        base_fri.merge_page(PdfReader(buffer_produtos).pages[0])
+        writer.add_page(base_fri)
+        
+        # Montar arquivo final
+        buffer_final = BytesIO()
+        writer.write(buffer_final)
+        buffer_final.seek(0)
+        return buffer_final.getvalue()
+
+    def imprimir_fri(self):
+        with open(f"Outros/fri_{self.escopo_id}.pdf", "wb") as f:
+            f.write(self.gerar_fri())
+
 
 if __name__ == "__main__":
     cliente = login_supabase()
-    montarCertificado(cliente, 111).imprimir_certificado()
+    # montarCertificado(cliente, 111).imprimir_certificado()
+    montarFRI(cliente, 111).imprimir_fri()
     

@@ -3,7 +3,7 @@ import pandas as pd
 import base64
 from datetime import datetime
 from formatar_campos import formatar_cpf_cnpj, formatar_data
-from gerar_certificado import montarCertificado
+from gerar_certificado import montarCertificado, montarFRI
 
 
 def funcao_menu_lateral(page, *args):
@@ -468,13 +468,18 @@ class novaUProd():
 
 
 class imprimirEscopo():
-    def __init__(self, page):
+    def __init__(self, page, escopo = True):
         self.page = page
+        self.escopo = escopo
         self.salvar_certificado()
 
     def salvar_certificado(self):
-        certificado = montarCertificado(self.page.cliente, self.page.session.get('id'))
-        buffer_pdf = certificado.gerar_certificado()
+        if self.escopo:
+            certificado = montarCertificado(self.page.cliente, self.page.session.get('id'))
+            buffer_pdf = certificado.gerar_certificado()
+        else:
+            certificado = montarFRI(self.page.cliente, self.page.session.get('id'))
+            buffer_pdf = certificado.gerar_fri()
         
         pdf_base64 = base64.b64encode(buffer_pdf).decode('utf-8')
         data_url = f"data:application/pdf;base64,{pdf_base64}"
@@ -513,8 +518,7 @@ class menuEscopo():
         imprimirEscopo(self.page)
         
     def ficha_rastrabilidade_individual(self, e):
-        print('ficha_rastrabilidade_individual')
-        
+        imprimirEscopo(self.page, escopo=False)        
             
     def montar_menu(self):
         dados = self.obter_dados()
