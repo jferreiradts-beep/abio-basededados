@@ -3,6 +3,7 @@ from reportlab.pdfbase.pdfmetrics import stringWidth
 from reportlab.lib.pagesizes import A4, landscape, portrait
 from pypdf import PdfReader, PdfWriter
 from io import BytesIO
+from copy import deepcopy
 from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
 
@@ -196,18 +197,18 @@ class montarCertificado():
         writer = PdfWriter()
         
         # Criar capa
-        buffer = self.criar_canvas_capa()
         base_capa = PdfReader("mapa/certificado_capa.pdf")
         base_capa = base_capa.pages[0]
+        base_capa = template_capa.pages[0]
         base_capa.merge_page(PdfReader(buffer).pages[0])
         writer.add_page(base_capa)
 
         # Criar produtos
         lista_caixas = self.criar_caixas_produtos()
         for i, pagina in enumerate(lista_caixas):
-            buffer = self.criar_canvas_produto(lista_caixas[pagina])
             base_produtos = PdfReader("mapa/certificado_produtos.pdf")
             base_produtos = base_produtos.pages[0]
+            base_produtos = template_produtos.pages[0]
             base_produtos.merge_page(PdfReader(buffer).pages[0])
             writer.add_page(base_produtos)
         
@@ -228,10 +229,7 @@ class montarFRI():
         self.escopo_id = escopo_id
         self.dados = obterDados(self.cliente, self.escopo_id)
 
-    def montar_cabecalho(self):
-        buffer = BytesIO()
-        can = canvas.Canvas(buffer, pagesize=portrait(A4))
-        
+    def montar_cabecalho(self, can):
         linha = CaixaTexto(self.dados.capa['unidade_producao'], 410, fonte='Times-Bold').fazer_caixa(can, 130, 750, 'centro')
         endereco = f"{self.dados.capa['endereco']} - {self.dados.capa['municipio']} - {self.dados.capa['estado']}"
         linha = CaixaTexto(endereco, 410, pontos=12).fazer_caixa(can, 130, linha)
@@ -275,34 +273,28 @@ class montarFRI():
         CaixaTexto('Und.', 100, fonte='Times-Bold', pontos=12).fazer_caixa(can, coluna + 200, linha)
         CaixaTexto('Qtd', 100, fonte='Times-Bold', pontos=12).fazer_caixa(can, coluna + 240, linha)
 
-        can.save()
-        buffer.seek(0)
-        return buffer, linha
+        return linha
 
 
-    def gerar_fri(self):
-        writer = PdfWriter()
-
+    def gerar_pdf_produtos(self):
         lista_produtos = []
         for produto in self.dados.produtos:
             lista_produtos.extend(produto['produtos'])
         lista_produtos = sorted(lista_produtos)
-
-        buffer_cab, linha_cab = self.montar_cabecalho()
-        buffer_cab.seek(0)
-        linha = linha_cab - 20
 
         buffer_produtos = BytesIO()
         can = canvas.Canvas(buffer_produtos, pagesize=portrait(A4))
         coluna = 560 / 2 + 5
         i = 0
 
+        linha = self.montar_cabecalho(can) - 20
+
         for i in range(0, len(lista_produtos), 2):
             produto1 = lista_produtos[i]
             produto2 = lista_produtos[i+1] if i+1 < len(lista_produtos) else None
             
             p1_dados = CaixaTexto(produto1, 145, pontos=12)
-            linha1 = p1_dados.fazer_caixa(can, 40, linha)
+            linha1 = linha2 = p1_dados.fazer_caixa(can, 40, linha)
             can.roundRect(200, linha -2, 30, 15, 5, stroke=1, fill=0)
             can.roundRect(240, linha -2, 35, 15, 5, stroke=1, fill=0)
 
@@ -312,36 +304,40 @@ class montarFRI():
                 can.roundRect(coluna + 200, linha -2, 30, 15, 5, stroke=1, fill=0)
                 can.roundRect(coluna + 240, linha -2, 35, 15, 5, stroke=1, fill=0)
 
-            linha = min(linha1, linha2) - 5 if produto2 else linha1 - 5
+            linha = min(linha1, linha2) - 5
 
             if linha < 100:
-                can.save()
-                buffer_produtos.seek(0)
-                
-                # Mescla as páginas
-                base_fri = PdfReader("mapa/modelo_FRI.pdf")
-                base_fri = base_fri.pages[0]
-                base_fri.merge_page(PdfReader(buffer_cab).pages[0])
-                base_fri.merge_page(PdfReader(buffer_produtos).pages[0])
-                writer.add_page(base_fri)
-
-                # Reinicia o buffer
-                buffer_produtos = BytesIO()
-                can = canvas.Canvas(buffer_produtos, pagesize=portrait(A4))
-                buffer_cab, linha_cab = self.montar_cabecalho()
-                buffer_cab.seek(0)
-                linha = linha_cab - 20
+                can.showPage()
+                linha = self.montar_cabecalho(can) - 20
             
         can.save()
         buffer_produtos.seek(0)
+        return buffer_produtos
+
+    def gerar_fri(self):
+        pdf_produtos = PdfReader(self.gerar_pdf_produtos())
+
+        # Preparar numeração de páginas
+        buffer_num = BytesIO()
+        can_num = canvas.Canvas(buffer_num, pagesize=portrait(A4))
         
-        # Mescla as páginas
-        base_fri = PdfReader("mapa/modelo_FRI.pdf")
-        base_fri = base_fri.pages[0]
-        base_fri.merge_page(PdfReader(buffer_cab).pages[0])
-        base_fri.merge_page(PdfReader(buffer_produtos).pages[0])
-        writer.add_page(base_fri)
-        
+        total_paginas = len(pdf_produtos.pages)
+        for i in range(total_paginas):
+            can_num.drawString(500, 40, f"p. {i+1} / {total_paginas}")
+            if i < total_paginas - 1:
+                can_num.showPage()
+
+        can_num.save()
+        buffer_num.seek(0)
+        pdf_num = PdfReader(buffer_num)
+
+        writer = PdfWriter()
+        for i, produto in enumerate(pdf_produtos.pages):
+            base_fri = PdfReader("mapa/modelo_FRI.pdf").pages[0]
+            base_fri.merge_page(produto)
+            base_fri.merge_page(pdf_num.pages[i])
+            writer.add_page(base_fri)
+
         # Montar arquivo final
         buffer_final = BytesIO()
         writer.write(buffer_final)
@@ -351,7 +347,6 @@ class montarFRI():
     def imprimir_fri(self):
         with open(f"Outros/fri_{self.escopo_id}.pdf", "wb") as f:
             f.write(self.gerar_fri())
-
 
 if __name__ == "__main__":
     cliente = login_supabase()
