@@ -153,7 +153,7 @@ class janelaNovoProduto():
 
     def cancelar(self, e):
         self.janela.open = False
-        self.page.update()
+        self.janela.update()
 
     def montar_janela(self):
         txt_titulo = 'Novo produto:' if self.tipo == 'produto' else 'Novo grupo:'
@@ -181,9 +181,9 @@ class janelaNovoProduto():
 
     def abrir_janela(self):
         self.montar_janela()
-        self.page.overlay.append(self.janela)
+        self.page.add(self.janela)
         self.janela.open = True
-        self.page.update()
+        self.janela.update()
 
 
 class metainformacaoEscopo():
@@ -329,7 +329,7 @@ class linhaBotoes():
         self.janela_novo_produto.abrir_janela()
 
     def novo_grupo(self, e):
-        self.janela_novo_grupo = janelaNovoProduto(self.page, [], tipo='grupo')
+        self.janela_novo_grupo = janelaNovoProduto(self.page, [], self.atualizar_painel, tipo='grupo')
         self.janela_novo_grupo.abrir_janela()
 
     def salvar_produtos(self, e):
