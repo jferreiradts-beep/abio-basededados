@@ -3,7 +3,6 @@ from reportlab.pdfbase.pdfmetrics import stringWidth
 from reportlab.lib.pagesizes import A4, landscape, portrait
 from pypdf import PdfReader, PdfWriter
 from io import BytesIO
-from copy import deepcopy
 from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
 
@@ -116,10 +115,7 @@ class montarCertificado():
         self.escopo_id = escopo_id
         self.dados = obterDados(self.cliente, self.escopo_id)
     
-    def criar_canvas_capa(self):
-        buffer = BytesIO()
-        can = canvas.Canvas(buffer, pagesize=landscape(A4))
-
+    def criar_canvas_capa(self, can):
         linha = CaixaTexto(self.dados.linha_associados, 700).fazer_caixa(can, 60, 380, 'centro')
         linha = CaixaTexto("Produtor(a)", 700, pontos=10).fazer_caixa(can, 60, linha+5, 'centro')
         linha = CaixaTexto(f"Matrícula: {self.dados.capa['matricula']}", 700, pontos=14).fazer_caixa(can, 60, linha-5, 'centro')
@@ -139,35 +135,8 @@ class montarCertificado():
         
         linha = CaixaTexto('WELLINGTON MARY', 700, fonte='Times-Bold', pontos=14).fazer_caixa(can, 60, 80, 'centro')
         linha = CaixaTexto('DIRECTOR TÉCNICO DA ABIO', 700, fonte='Times-Bold', pontos=10).fazer_caixa(can, 60, linha, 'centro')
-        
-        can.save()
-        buffer.seek(0)
-        return buffer
 
-    def criar_caixas_produtos(self, altura = 400):
-        lista_caixas = {}
-        comprimento = 0
-        pagina = 0
-        lista_caixas[f'pagina_{pagina}'] = []
-        for produto in self.dados.produtos:
-            titulo = CaixaTexto(produto['grupo'], 700, fonte='Times-Bold')
-            lista_produtos = ', '.join(produto['produtos']) + ' //-----------------//'
-            lista_produtos = CaixaTexto(lista_produtos, 700)
-            
-            if comprimento + titulo.altura + lista_produtos.altura > altura:
-                comprimento = 0
-                pagina += 1
-                lista_caixas[f'pagina_{pagina}'] = []
-
-            lista_caixas[f'pagina_{pagina}'].append((titulo, lista_produtos))
-            comprimento += titulo.altura + lista_produtos.altura + 20
-
-        return lista_caixas
-
-    def criar_canvas_produto(self, pagina):
-        buffer = BytesIO()
-        can = canvas.Canvas(buffer, pagesize=landscape(A4))
-        
+    def criar_canvas_cab_produtos(self, can):
         # Dados à esquerda: matrícula e validade
         linha = CaixaTexto(f"Matrícula: {self.dados.capa['matricula']}", 700, pontos=10).fazer_caixa(can, 60, 520, 'esquerda')
         validade = datetime.strptime(self.dados.capa['data_emissao'], '%Y-%m-%d') + relativedelta(years=1) - timedelta(days=1)
@@ -183,34 +152,51 @@ class montarCertificado():
         for caixa in caixas_produtores:
             linha = caixa.fazer_caixa(can, posicao, linha, 'esquerda')        
 
-        # Produtos
+    def criar_canvas_completo(self):
+        buffer = BytesIO()
+        can = canvas.Canvas(buffer, pagesize=landscape(A4))
+        
+        # Criar a capa
+        self.criar_canvas_capa(can)
+        can.showPage()
+
+        # Criar os produtos
+        self.criar_canvas_cab_produtos(can)
         linha = 460
-        for titulo, lista_produtos in pagina:
+        for produto in sorted(self.dados.produtos, key=lambda x: (x['grupo'] == 'Outros', x['grupo'])):
+            titulo = CaixaTexto(produto['grupo'], 700, fonte='Times-Bold')
+            lista_produtos = ', '.join(produto['produtos']) + ' //-----------------//'
+            lista_produtos = CaixaTexto(lista_produtos, 700)
+
+            if linha - titulo.altura - lista_produtos.altura < 60:
+                can.showPage()
+                self.criar_canvas_cab_produtos(can)
+                linha = 460
+
             linha = titulo.fazer_caixa(can, 60, linha, 'esquerda')
             linha = lista_produtos.fazer_caixa(can, 60, linha, 'justificado')
             linha -= 20
+
         can.save()
         buffer.seek(0)
         return buffer
 
     def gerar_certificado(self):
         writer = PdfWriter()
-        
-        # Criar capa
-        base_capa = PdfReader("mapa/certificado_capa.pdf")
-        base_capa = base_capa.pages[0]
-        base_capa = template_capa.pages[0]
-        base_capa.merge_page(PdfReader(buffer).pages[0])
-        writer.add_page(base_capa)
 
         # Criar produtos
-        lista_caixas = self.criar_caixas_produtos()
-        for i, pagina in enumerate(lista_caixas):
-            base_produtos = PdfReader("mapa/certificado_produtos.pdf")
-            base_produtos = base_produtos.pages[0]
-            base_produtos = template_produtos.pages[0]
-            base_produtos.merge_page(PdfReader(buffer).pages[0])
-            writer.add_page(base_produtos)
+        pdf_canvas = PdfReader(self.criar_canvas_completo())
+        for i, pagina in enumerate(pdf_canvas.pages):
+            if i == 0:
+                # Criar capa
+                base = PdfReader("mapa/certificado_capa.pdf")
+                base = base.pages[0]
+            else:
+                base = PdfReader("mapa/certificado_produtos.pdf")
+                base = base.pages[0]
+
+            base.merge_page(pagina)
+            writer.add_page(base)
         
         # Salvar
         buffer_final = BytesIO()
@@ -350,6 +336,6 @@ class montarFRI():
 
 if __name__ == "__main__":
     cliente = login_supabase()
-    # montarCertificado(cliente, 111).imprimir_certificado()
-    montarFRI(cliente, 111).imprimir_fri()
+    montarCertificado(cliente, 66).imprimir_certificado()
+    #montarFRI(cliente, 111).imprimir_fri()
     
