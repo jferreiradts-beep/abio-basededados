@@ -5,6 +5,7 @@ from pag_matricula import MatriculaBase
 from lista_produtos import baseProdutos
 from escudo_supabase import escudo_supabase, login_supabase, criar_cliente_supabase
 from pag_login import LoginBase
+from pag_recuperar_senha import RecuperarSenhaBase
 
 def main(page: ft.Page):
     # Inicializa cliente sem logar automaticamente (agora o login é na tela)
@@ -28,6 +29,8 @@ def main(page: ft.Page):
             MatriculaBase(page)
         elif page.route == "/produtos":
             baseProdutos(page)
+        elif page.route == "/recuperar-senha":
+            RecuperarSenhaBase(page)
         
         page.update()
 

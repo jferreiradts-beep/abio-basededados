@@ -18,6 +18,12 @@ class LoginBase:
             color=ft.Colors.WHITE
         )
 
+        # Link de recuperação de senha
+        self.link_recuperar = ft.TextButton(
+            text="Recuperar senha",
+            on_click=self.ir_recuperar_senha
+        )
+
         # Layout
         self.conteudo = ft.Container(
             content=ft.Column(
@@ -25,7 +31,8 @@ class LoginBase:
                     ft.Text("Login", size=30, weight=ft.FontWeight.BOLD),
                     self.email,
                     self.senha,
-                    self.botao_entrar
+                    self.botao_entrar,
+                    self.link_recuperar
                 ],
                 alignment=ft.MainAxisAlignment.CENTER,
                 horizontal_alignment=ft.CrossAxisAlignment.CENTER,
@@ -36,6 +43,10 @@ class LoginBase:
         )
         
         self.page.add(self.conteudo)
+
+    def ir_recuperar_senha(self, e):
+        self.page.session.set("email_recuperacao", self.email.value)
+        self.page.go("/recuperar-senha")
 
     def fazer_login(self, e):
         email_val = self.email.value

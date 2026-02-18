@@ -244,44 +244,72 @@ class painelProdutos():
         return [produto.data for produto in self.produtos_selecionados if produto.value]
 
     def montar_lista(self):
-        # ... (rest of implementation)
-        lista_temp = [] 
-        
-        for grupo in self.dados.lista_produtos:
-            txt_grupo = ft.Text(grupo['nome'], size=18, weight="bold")
-            dblc_grupo = ft.GestureDetector(
-                content=txt_grupo,
-                on_double_tap=lambda e, controle = txt_grupo, controle_id = grupo['id']: self.editar_controle(controle, controle_id, 'grupo')
-            )
-            linha = ft.Row([dblc_grupo])
+        lista_temp = []
 
+        # Handlers únicos
+        def on_marcar_produto(e):
+            txt = e.control.data["txt"]
+            txt.weight = ft.FontWeight.BOLD if e.control.value else ft.FontWeight.NORMAL
+            txt.update()
+
+        def on_editar_produto(e):
+            data = e.control.data
+            self.editar_controle(data["txt"], data["id"], data["tipo"])
+
+        for grupo in self.dados.lista_produtos:
+
+            # --- GRUPO ---
+            txt_grupo = ft.Text(grupo['nome'], size=18, weight="bold")
+
+            grupo_container = ft.GestureDetector(
+                content=ft.Container(
+                    content=txt_grupo,
+                    data={"id": grupo["id"], "txt": txt_grupo, "tipo": "grupo"},
+                ),
+                data={"id": grupo["id"], "txt": txt_grupo, "tipo": "grupo"},
+                on_double_tap=on_editar_produto
+            )
+
+            linha = ft.Row([grupo_container])
+
+            # --- PRODUTOS ---
             grupo_produtos = sorted(grupo['produtos'], key=lambda x: x['nome'])
+
             for i, produto in enumerate(grupo_produtos):
+
                 if i % 4 == 0:
                     lista_temp.append(linha)
                     linha = ft.Row([])
 
-                txt_produto = ft.Text(produto['nome'],
-                                width=200,
-                                size=14,
-                                weight=ft.FontWeight.BOLD if produto['incluso'] else ft.FontWeight.NORMAL)
+                txt_produto = ft.Text(
+                    produto['nome'],
+                    width=200,
+                    size=14,
+                    weight=ft.FontWeight.BOLD if produto['incluso'] else ft.FontWeight.NORMAL
+                )
+
                 ckb_produto = ft.Checkbox(
-                    data=produto['id'],
                     value=produto['incluso'],
                     width=20,
-                    on_change=lambda e, controle = txt_produto: self.marcar_produto(controle, e)
-                )
-                dblc_produto = ft.GestureDetector(
-                    content=txt_produto,
-                    on_double_tap=lambda e, controle = txt_produto, controle_id = produto['id']: self.editar_controle(controle, controle_id, 'produto')
+                    data={"id": produto["id"], "txt": txt_produto},
+                    on_change=on_marcar_produto
                 )
 
-                linha.controls.append(ft.Row([ckb_produto, dblc_produto], spacing=5))
+                produto_container = ft.GestureDetector(
+                    content=ft.Container(
+                        content=ft.Row([ckb_produto, txt_produto], spacing=5),
+                        data={"id": produto["id"], "txt": txt_produto, "tipo": "produto"},
+                    ),
+                    data={"id": produto["id"], "txt": txt_produto, "tipo": "produto"},
+                    on_double_tap=on_editar_produto
+                )
+
+                linha.controls.append(produto_container)
                 self.produtos_selecionados.append(ckb_produto)
 
-            lista_temp.append(linha)       
+            lista_temp.append(linha)
             lista_temp.append(ft.Divider())
-        
+
         return lista_temp
 
     def carregar_conteudo_lazy(self):
