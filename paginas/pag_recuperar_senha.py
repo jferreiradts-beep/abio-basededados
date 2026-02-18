@@ -5,18 +5,7 @@ from escudo_supabase import aviso
 class RecuperarSenhaBase:
     def __init__(self, page: ft.Page):
         self.page = page
-
-        # Verifica se já existe uma sessão ativa (utilizador veio do link do email)
-        sessao = None
-        try:
-            sessao = self.page.cliente.auth.get_session()
-        except Exception:
-            pass
-
-        if sessao:
-            self._montar_modo_definir_senha()
-        else:
-            self._montar_modo_pedir_link()
+        self._montar_modo_pedir_link()
 
     # ─── Modo 1: Pedir link de recuperação ───────────────────────────────────
 
