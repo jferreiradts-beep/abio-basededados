@@ -5,7 +5,15 @@ from escudo_supabase import aviso
 class RecuperarSenhaBase:
     def __init__(self, page: ft.Page):
         self.page = page
-        self._montar_modo_pedir_link()
+        
+        # Verificar se estamos no modo de recuperação (vindo de um link de email)
+        # O Supabase envia type=recovery na query string ou fragmento
+        is_recovery = self.page.query.get("type") == "recovery"
+        
+        if is_recovery:
+            self._montar_modo_definir_senha()
+        else:
+            self._montar_modo_pedir_link()
 
     # ─── Modo 1: Pedir link de recuperação ───────────────────────────────────
 

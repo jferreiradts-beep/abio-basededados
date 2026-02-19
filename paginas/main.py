@@ -13,29 +13,87 @@ def main(page: ft.Page):
     page.voltar_dados = {'endereco': [], 'dados_pagina': []}
     page.avancar_dados = {}
 
-    page.go('/login')
+    # Público: rotas que não precisam de login
+    PUBLIC_ROUTES = ["/login", "/recuperar-senha"]
 
-    @escudo_supabase
     def route_change(route):
-        page.clean()
+        import traceback
+        print(f"[DEBUG] route_change chamado: page.route={page.route!r}")
         
-        if page.route == "/login":
-            LoginBase(page)
-        elif page.route == "/dashboard": 
-            DashboardBase(page)
-        elif page.route == "/formulario":
-            baseFormulario(page)
-        elif page.route == "/matricula":
-            MatriculaBase(page)
-        elif page.route == "/produtos":
-            baseProdutos(page)
-        elif page.route == "/recuperar-senha":
-            RecuperarSenhaBase(page)
-        
-        page.update()
+        # Verificar se o usuário está logado para rotas protegidas
+        if page.route not in PUBLIC_ROUTES:
+            try:
+                sessao = page.cliente.auth.get_session()
+                if not sessao:
+                    print(f"[AUTH] Usuário não logado. Redirecionando de {page.route} para /login")
+                    page.go("/login")
+                    return
+            except Exception as e:
+                print(f"[AUTH] Erro ao verificar sessão: {e}")
+                page.go("/login")
+                return
+
+        try:
+            page.clean()
+            
+            if page.route == "/login":
+                LoginBase(page)
+            elif page.route == "/dashboard": 
+                DashboardBase(page)
+            elif page.route == "/formulario":
+                baseFormulario(page)
+            elif page.route == "/matricula":
+                MatriculaBase(page)
+            elif page.route == "/produtos":
+                baseProdutos(page)
+            elif page.route == "/recuperar-senha":
+                print("[DEBUG] A instanciar RecuperarSenhaBase...")
+                RecuperarSenhaBase(page)
+                print("[DEBUG] RecuperarSenhaBase instanciado com sucesso")
+
+            print(f"[DEBUG] route_change concluído para: {page.route!r}")
+            page.update()
+        except Exception as e:
+            error_trace = traceback.format_exc()
+            print(f"[ERRO] Exceção em route_change para rota {page.route!r}: {e}")
+            print(error_trace)
+            page.clean()
+            page.add(
+                ft.Column([
+                    ft.Icon(ft.Icons.ERROR_OUTLINE, color="red", size=60),
+                    ft.Text("Ops! Algo deu errado.", size=25, weight=ft.FontWeight.BOLD),
+                    ft.Container(
+                        content=ft.Text(f"{str(e)}", color="white", weight=ft.FontWeight.BOLD),
+                        bgcolor="red", padding=10, border_radius=5
+                    ),
+                    ft.Container(
+                        content=ft.Column([
+                            ft.Text("Detalhes técnicos:", weight=ft.FontWeight.BOLD),
+                            ft.Text(error_trace, font_family="monospace", size=12, selectable=True)
+                        ], scroll=ft.ScrollMode.ALWAYS),
+                        height=300,
+                        bgcolor=ft.Colors.GREY_200,
+                        padding=10,
+                        border_radius=5,
+                    ),
+                    ft.ElevatedButton("Voltar ao login", on_click=lambda _: page.go("/login"))
+                ],
+                alignment=ft.MainAxisAlignment.CENTER,
+                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                scroll=ft.ScrollMode.AUTO
+                )
+            )
+            page.update()
 
     page.on_route_change = route_change
-    page.go(page.route)
+    
+    # Lógica de entrada inicial
+    if page.route == "/" or page.route == "" or page.route is None:
+        page.go("/login")
+    else:
+        # Se veio com uma rota específica na URL (ex: /dashboard ou /recuperar-senha)
+        # chamamos o route_change manualmente para processar a página atual
+        page.on_route_change(page.route)
 
 
 if __name__ == "__main__":
