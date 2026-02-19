@@ -8,7 +8,8 @@ class RecuperarSenhaBase:
         
         # Verificar se estamos no modo de recuperação (vindo de um link de email)
         # O Supabase envia type=recovery na query string ou fragmento
-        is_recovery = self.page.query.get("type") == "recovery"
+        # Usamos uma verificação segura pois em algumas versões do Flet .get() pode dar KeyError
+        is_recovery = "type" in self.page.query and self.page.query.get("type") == "recovery"
         
         if is_recovery:
             self._montar_modo_definir_senha()
