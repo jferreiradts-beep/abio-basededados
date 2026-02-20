@@ -1,19 +1,42 @@
 import flet as ft
+from urllib.parse import urlparse, parse_qs
 from escudo_supabase import aviso
 
 
 class RecuperarSenhaBase:
     def __init__(self, page: ft.Page):
         self.page = page
-        
-        # Verificar se estamos no modo de recuperação (vindo de um link de email)
-        # O Supabase envia type=recovery na query string ou fragmento
-        # Usamos try-except para garantir compatibilidade com diferentes versões do Flet
+
+        # O Supabase após verificar o token faz redirect para:
+        #   /recuperar-senha#access_token=...&type=recovery&...
+        # Os parâmetros vêm no FRAGMENTO (#hash), não na query string (?).
+        # page.query só lê a query string — por isso é sempre vazio aqui.
+        # Lemos page.url e extraímos o fragmento manualmente.
+        is_recovery = False
         try:
-            is_recovery = self.page.query.get("type") == "recovery"
-        except (KeyError, TypeError, AttributeError):
+            url = self.page.url or ""
+            # Extrair a parte após '#'
+            fragment = url.split("#", 1)[1] if "#" in url else ""
+            fragment_params = parse_qs(fragment)
+            tipo = fragment_params.get("type", [""])[0]
+            access_token = fragment_params.get("access_token", [""])[0]
+
+            if tipo == "recovery" and access_token:
+                # Guardar tokens em sessão para o cliente Supabase os usar
+                refresh_token = fragment_params.get("refresh_token", [""])[0]
+                self.page.session.set("recovery_access_token", access_token)
+                self.page.session.set("recovery_refresh_token", refresh_token)
+
+                # Autenticar a sessão com os tokens vindos do link de email
+                try:
+                    self.page.cliente.auth.set_session(access_token, refresh_token)
+                except Exception:
+                    pass  # set_session pode falhar se já for válida
+
+                is_recovery = True
+        except Exception:
             is_recovery = False
-        
+
         if is_recovery:
             self._montar_modo_definir_senha()
         else:
