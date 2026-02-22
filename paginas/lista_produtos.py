@@ -241,7 +241,9 @@ class painelProdutos():
         self.dialogo_editar.abrir_janela()
 
     def verificar_produtos_selecionados(self):
-        return [produto.data for produto in self.produtos_selecionados if produto.value]
+        produtos = [produto.data['id'] for produto in self.produtos_selecionados if produto.value]
+        print(produtos)
+        return produtos
 
     def montar_lista(self):
         lista_temp = []
