@@ -4,19 +4,13 @@ from escudo_supabase import aviso
 
 
 class RecuperarSenhaBase:
-    def __init__(self, page: ft.Page):
+    def __init__(self, page: ft.Page, url: str):
         self.page = page
+        self.url = url
 
-        # O Supabase após verificar o token faz redirect para:
-        #   /recuperar-senha#access_token=...&type=recovery&...
-        # Os parâmetros vêm no FRAGMENTO (#hash), não na query string (?).
-        # page.query só lê a query string — por isso é sempre vazio aqui.
-        # Lemos page.url e extraímos o fragmento manualmente.
         is_recovery = False
         try:
-            url = self.page.url or ""
-            # Extrair a parte após '#'
-            fragment = url.split("#", 1)[1] if "#" in url else ""
+            fragment = self.url.split("#", 1)[1] if "#" in self.url else ""
             fragment_params = parse_qs(fragment)
             tipo = fragment_params.get("type", [""])[0]
             access_token = fragment_params.get("access_token", [""])[0]

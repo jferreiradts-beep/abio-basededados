@@ -47,9 +47,8 @@ def main(page: ft.Page):
             elif page.route == "/produtos":
                 baseProdutos(page)
             elif page.route == "/recuperar-senha":
-                print("[DEBUG] A instanciar RecuperarSenhaBase...")
-                RecuperarSenhaBase(page)
-                print("[DEBUG] RecuperarSenhaBase instanciado com sucesso")
+                url = page.url or ""
+                RecuperarSenhaBase(page, url)
 
             print(f"[DEBUG] route_change concluído para: {page.route!r}")
             page.update()
