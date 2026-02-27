@@ -8,6 +8,7 @@ from pag_login import LoginBase
 from pag_recuperar_senha import RecuperarSenhaBase
 
 def main(page: ft.Page):
+    url = page.url or ""
     # Inicializa cliente sem logar automaticamente (agora o login é na tela)
     page.cliente = criar_cliente_supabase()
     page.voltar_dados = {'endereco': [], 'dados_pagina': []}
@@ -18,7 +19,6 @@ def main(page: ft.Page):
 
     def route_change(route):
         import traceback
-        print(f"[DEBUG] route_change chamado: page.route={page.route!r}")
         
         # Verificar se o usuário está logado para rotas protegidas
         if page.route not in PUBLIC_ROUTES:
@@ -47,15 +47,10 @@ def main(page: ft.Page):
             elif page.route == "/produtos":
                 baseProdutos(page)
             elif page.route == "/recuperar-senha":
-                url = page.url or ""
                 RecuperarSenhaBase(page, url)
-
-            print(f"[DEBUG] route_change concluído para: {page.route!r}")
             page.update()
         except Exception as e:
             error_trace = traceback.format_exc()
-            print(f"[ERRO] Exceção em route_change para rota {page.route!r}: {e}")
-            print(error_trace)
             page.clean()
             page.add(
                 ft.Column([
