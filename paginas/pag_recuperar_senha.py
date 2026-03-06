@@ -4,32 +4,20 @@ from escudo_supabase import aviso
 
 
 class RecuperarSenhaBase:
-    def __init__(self, page: ft.Page, url: str):
+    def __init__(self, page: ft.Page):
         self.page = page
-        self.url = url
 
+        url = self.page.route
         is_recovery = False
-        try:
-            fragment = self.url.split("#", 1)[1] if "#" in self.url else ""
-            fragment_params = parse_qs(fragment)
-            tipo = fragment_params.get("type", [""])[0]
-            access_token = fragment_params.get("access_token", [""])[0]
-
-            if tipo == "recovery" and access_token:
-                # Guardar tokens em sessão para o cliente Supabase os usar
-                refresh_token = fragment_params.get("refresh_token", [""])[0]
-                self.page.session.set("recovery_access_token", access_token)
-                self.page.session.set("recovery_refresh_token", refresh_token)
-
-                # Autenticar a sessão com os tokens vindos do link de email
-                try:
-                    self.page.cliente.auth.set_session(access_token, refresh_token)
-                except Exception:
-                    pass  # set_session pode falhar se já for válida
-
+        if "?" in url:
+            parametros = parse_qs(url.split("?", 1)[1])
+            token = parametros.get("token", [None])[0]
+        
+            try:
+                self.page.cliente.auth.verify_otp({'token_hash': token, 'type': 'recovery'})
                 is_recovery = True
-        except Exception:
-            is_recovery = False
+            except Exception as e:
+                print("Erro ao verificar recovery:", e)
 
         if is_recovery:
             self._montar_modo_definir_senha()
