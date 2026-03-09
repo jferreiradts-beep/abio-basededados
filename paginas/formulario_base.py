@@ -139,7 +139,7 @@ class estruturaDeCampos():
             valor.on_change = lambda e: (setattr(e.control, "value", formatar_cpf_cnpj(e.control.value)),
                                          e.control.update())
 
-        if metainformacao['rotulo'] == 'Tipo de escopo':
+        if metainformacao['rotulo'] == 'Tipo de escopo' and valor_inicial:
             self.page.session.set("tipo_escopo", valor_inicial)
             nome_label = [opcao['nome'] for opcao in opcoes if opcao['id'] == valor_inicial][0]
             self.page.session.set("nome_escopo", nome_label)
