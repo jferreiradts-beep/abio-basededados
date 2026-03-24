@@ -325,11 +325,17 @@ class colunaIndividual:
             else:
                 self.page.session.set('id', id_selecionado)
                 self.page.go('/matricula')
+        
         else:
             # Tratamento especial para novo (id = 0)
             id_final = id_selecionado[1:] if id_selecionado != '0' else id_selecionado
             self.page.session.set('id', id_final)
-            self.page.go('/formulario')
+            
+            # Exceção do painel grupo
+            if self.nome == 'Grupos' and self.filtro['Grupos']['id'] != '0':
+                self.page.go('/painel_grupo')
+            else:
+                self.page.go('/formulario')
 
     def selecionar(self, id_selecionado):
         self.filtro[self.nome]['id'] = id_selecionado

@@ -47,13 +47,14 @@ class escopoNaoSalvo():
         
 
 class verAcontecimentos():
-    def __init__(self, page):
+    def __init__(self, page, id):
         self.page = page
+        self.id = id
         self.exibir_janela_contecimentos()
 
     def obter_dados(self):
         dicionario_acontecimentos = self.page.cliente.table('tipo_acontecimento').select('*').execute()
-        resposta = self.page.cliente.table('acontecimentos').select('*').eq('escopo_id', self.page.session.get('id')).execute()
+        resposta = self.page.cliente.table('acontecimentos').select('*').eq('escopo_id', self.id).execute()
         return dicionario_acontecimentos.data, resposta.data
 
     def montar_lista_acontecimentos(self):
@@ -502,7 +503,8 @@ class menuEscopo():
 
    
     def ver_registro_acontecimentos(self, e):
-        verAcontecimentos(self.page)
+        id = self.page.session.get('id')
+        verAcontecimentos(self.page, id)
         
     def visualizar_produtos(self, e):
         verProdutos(self.page)
