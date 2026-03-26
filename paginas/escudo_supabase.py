@@ -29,7 +29,7 @@ def escudo_supabase(func):
             page.clean()
             
             # Tenta recuperar de onde viemos (definido no dashboard), ou vai pro Início
-            rota_retorno = page.session.get('voltar') or '/'
+            rota_retorno = page.session.get('voltar') or '/dashboard'
             
             page.add(
                 ft.Column([

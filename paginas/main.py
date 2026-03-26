@@ -73,7 +73,7 @@ def main(page: ft.Page):
                         padding=10,
                         border_radius=5,
                     ),
-                    ft.ElevatedButton("Voltar ao login", on_click=lambda _: page.go("/login"))
+                    ft.ElevatedButton("Voltar", on_click=lambda _: page.go("/dashboard"))
                 ],
                 alignment=ft.MainAxisAlignment.CENTER,
                 horizontal_alignment=ft.CrossAxisAlignment.CENTER,

@@ -47,29 +47,32 @@ class escopoNaoSalvo():
         
 
 class verAcontecimentos():
-    def __init__(self, page, id):
+    def __init__(self, page, id, ao_salvar = None):
         self.page = page
         self.id = id
+        self.ao_salvar = ao_salvar
+        self.modificado = False
         self.exibir_janela_contecimentos()
 
     def obter_dados(self):
+        cabecalho = self.page.cliente.table('vw_dados_com_associado').select('*').eq('id_escopo', f"e{self.id}").execute()
         dicionario_acontecimentos = self.page.cliente.table('tipo_acontecimento').select('*').execute()
         resposta = self.page.cliente.table('acontecimentos').select('*').eq('escopo_id', self.id).execute()
-        return dicionario_acontecimentos.data, resposta.data
+        return cabecalho.data, dicionario_acontecimentos.data, resposta.data
 
     def montar_lista_acontecimentos(self):
         self.dados_acontecimentos = self.obter_dados()
         
         # Ordenação por data e ordem
-        ordem_tipos = {tipo['id']: tipo['ordem'] for tipo in self.dados_acontecimentos[0]}
+        ordem_tipos = {tipo['id']: tipo['ordem'] for tipo in self.dados_acontecimentos[1]}
         acontecimentos = sorted(
-            self.dados_acontecimentos[1], 
+            self.dados_acontecimentos[2], 
             key=lambda x: (x['data'], ordem_tipos.get(x['tipo_id'], 0)), 
             reverse=True
         )
         lista_acontecimentos = ft.Column([], scroll=ft.ScrollMode.AUTO, expand=True)
         for acontecimento in acontecimentos:
-            tipo_acontecimento = next((item for item in self.dados_acontecimentos[0] if item['id'] == acontecimento['tipo_id']), None)
+            tipo_acontecimento = next((item for item in self.dados_acontecimentos[1] if item['id'] == acontecimento['tipo_id']), None)
             txt_data = ft.Text(value=acontecimento['data'], width=100, weight="bold" if tipo_acontecimento['destaque'] else "normal")
             txt_tipo = ft.Text(value=tipo_acontecimento['nome'], width=200, weight="bold" if tipo_acontecimento['destaque'] else "normal")
             txt_observacoes = ft.Text(value=acontecimento['observacoes'], width=240, weight="bold" if tipo_acontecimento['destaque'] else "normal")
@@ -134,6 +137,7 @@ class verAcontecimentos():
             return
         
         self.page.cliente.table('acontecimentos').update(dados).eq('id', idx).execute()
+        self.modificado = True
         self.lista_acontecimentos.controls.clear()
         self.lista_acontecimentos.controls.extend(self.montar_lista_acontecimentos().controls)
         self.lista_acontecimentos.update()
@@ -141,6 +145,7 @@ class verAcontecimentos():
 
     def eliminar_acontecimento(self, e, idx):
         self.page.cliente.table('acontecimentos').delete().eq('id', idx).execute()
+        self.modificado = True
         self.lista_acontecimentos.controls.clear()
         self.lista_acontecimentos.controls.extend(self.montar_lista_acontecimentos().controls)
         self.lista_acontecimentos.update()
@@ -165,7 +170,7 @@ class verAcontecimentos():
 
     def adicionar_acontecimento(self, e):
         dados = {chave: valor.value for chave, valor in self.formulario_acontecimento.items() if chave != 'aviso'}
-        dados['escopo_id'] = self.page.session.get('id')
+        dados['escopo_id'] = self.id
 
         try:
             data_formatada = datetime.strptime(dados['data'], '%Y-%m-%d')
@@ -177,6 +182,7 @@ class verAcontecimentos():
             return
         
         self.page.cliente.table('acontecimentos').insert(dados).execute()
+        self.modificado = True
         self.lista_acontecimentos.controls.clear()
         self.lista_acontecimentos.controls.extend(self.montar_lista_acontecimentos().controls)
         self.lista_acontecimentos.update()
@@ -184,6 +190,9 @@ class verAcontecimentos():
 
 
     def fechar_janela_acontecimentos(self, e):
+        if self.modificado and self.ao_salvar:
+            self.ao_salvar()    
+        
         self.janela_acontecimentos.open = False
         self.page.update()    
 
@@ -197,7 +206,7 @@ class verAcontecimentos():
         )
         
         opcoes_acontecimento = []
-        for item in sorted(self.dados_acontecimentos[0], key=lambda x: x['ordem']):
+        for item in sorted(self.dados_acontecimentos[1], key=lambda x: x['ordem']):
             opcoes_acontecimento.append(ft.dropdown.Option(key=str(item['id']), text=item['nome']))
         formulario_campos['tipo_id'] = ft.Dropdown(options=opcoes_acontecimento, width=340, label='Tipo de acontecimento')
         formulario_campos['observacoes'] = ft.TextField(label="Observações", width=500)
@@ -224,12 +233,15 @@ class verAcontecimentos():
         self.formulario_acontecimento, self.formulario_layout = self.montar_formulario()        
         self.linha_botoes = self.montar_linha_botoes()
 
+        escopo = f"{self.dados_acontecimentos[0][0]['matricula']} - {self.dados_acontecimentos[0][0]['primeiro_associado']} - {self.dados_acontecimentos[0][0]['escopo']}"
+
         # Montar janela
         return ft.AlertDialog(
             title=ft.Text("Acontecimentos"),
             content=ft.Container(
                 width=610, height=400,
                 content=ft.Column([
+                    ft.Text(escopo),
                     ft.Divider(),
                     self.lista_acontecimentos, 
                     ft.Divider(),

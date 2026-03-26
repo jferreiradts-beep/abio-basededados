@@ -15,8 +15,9 @@ class quadroTabela():
         (None,                'Ações'),          # não ordenável
     ]
 
-    def __init__(self, page, dados):
+    def __init__(self, page, dados, ao_salvar = None):
         self.page = page
+        self.ao_salvar = ao_salvar
         self.dados = list(dados['detalhe'])      # cópia mutável
         self.sort_campo = 'matricula'            # ordenação inicial
         self.sort_asc   = True
@@ -24,14 +25,14 @@ class quadroTabela():
         self._montar()
 
     def abrir_acontecimentos(self, e, x):
-        verAcontecimentos(self.page, x)
+        verAcontecimentos(self.page, x, self.ao_salvar)
 
     def abrir_formulario(self, e, x, matricula):
         self.page.voltar_dados['endereco'].append(self.page.route)
         self.page.voltar_dados['dados_pagina'].append({'id': self.page.session.get("id")})
         
         if matricula:
-            self.page.session.set('id', matricula)
+            self.page.session.set('id', x)
             self.page.go('/matricula')
         else:
             self.page.session.set('tipo', 'escopo')
@@ -101,8 +102,7 @@ class quadroTabela():
     def _label_coluna(self, campo, titulo):
         ativo = (campo == self.sort_campo)
         seta  = (' ↑' if not self.sort_asc else ' ↓') if ativo else ''
-        peso  = ft.FontWeight.BOLD if ativo else ft.FontWeight.W_500
-        return ft.Text(titulo + seta, weight=peso)
+        return ft.Text(titulo + seta, weight=ft.FontWeight.BOLD)
 
     def _montar_coluna(self, campo, titulo):
         def handler(e, c=campo):
@@ -204,6 +204,12 @@ class grupoBase():
             )
         return ft.Column([nome, outros_dados])
 
+    def atualizar_dados(self):
+        # Atualiza os dados da tabela
+        self.dados = self.obter_dados()
+        self.dados_tabela.dados = list(self.dados['detalhe'])
+        self.dados_tabela._atualizar()
+        
     def montar_layout(self):
         # 1️⃣ Cabeçalho
         cabecalho = ft.Row([
@@ -224,7 +230,7 @@ class grupoBase():
         ])
 
         # 3️⃣ Tabela de detalhes
-        dados_tabela = quadroTabela(self.page, self.dados)
+        self.dados_tabela = quadroTabela(self.page, self.dados, self.atualizar_dados)
         tabela = ft.Column([
                 ft.Container(
                 height= 400,
@@ -233,9 +239,10 @@ class grupoBase():
                 bgcolor=ft.Colors.GREY_200,
                 border_radius=10,
                 padding=20,
-                content= dados_tabela.tabela
+                content= self.dados_tabela.tabela
                 ),
         ])
+
 
         # 4️⃣ Botões
         linha_botoes = linhaBotoes(self.page).montar_linha_botoes()
