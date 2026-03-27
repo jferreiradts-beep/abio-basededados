@@ -98,9 +98,10 @@ class botoesFormulario():
 
 
 class estruturaDeCampos():
-    def __init__(self, page, resposta):
+    def __init__(self, page, resposta, atualizar_estrutura_de_campos):
         self.page = page
         self.resposta = resposta
+        self.atualizar_estrutura_de_campos = atualizar_estrutura_de_campos
         self.area_rolavel = ft.Column(spacing=20,
             expand=True,
             scroll=ft.ScrollMode.AUTO,
@@ -147,13 +148,46 @@ class estruturaDeCampos():
         return ft.Row([campo,valor], alignment=ft.MainAxisAlignment.CENTER, spacing=10)
 
     def campo_ajustavel(self, posicao, opcoes_label=[], valor_inicial='', largura=(150, 200)):
-        
+
+        def eliminar_confirmado(e):
+            dialogo.open = False
+            self.resposta['dados_ajustaveis'].pop(posicao)
+            self.atualizar_estrutura_de_campos()
+            self.page.update()
+
+        def eliminar_cancelado(e):
+            dialogo.open = False
+            label_dropdown.value = self.resposta['dados_ajustaveis'][posicao]['campo_id']
+            label_dropdown.update()
+            self.page.update()
+
         def atualizar_label(e):
-            self.resposta['dados_ajustaveis'][posicao]['campo_id'] = e.control.value
+            if e.control.value == 'Eliminar':
+                # Buscar o nome a partir do ID guardado
+                campo_id = self.resposta['dados_ajustaveis'][posicao]['campo_id']
+                nome_campo = next(
+                    (op['nome'] for op in opcoes_label if op['id'] == campo_id),
+                    'este campo'
+                )
+                dialogo.content = ft.Text(f"Tem a certeza que deseja eliminar o campo \u00ab{nome_campo}\u00bb?")
+                if dialogo not in self.page.overlay:
+                    self.page.overlay.append(dialogo)
+                dialogo.open = True
+                self.page.update()
+            else:
+                self.resposta['dados_ajustaveis'][posicao]['campo_id'] = e.control.value
 
         def atualizar_valor(e):
             self.resposta['dados_ajustaveis'][posicao]['valor'] = e.control.value
 
+        dialogo = ft.AlertDialog(
+            title=ft.Text("Confirmar eliminação"),
+            content=ft.Text(""),  # preenchido em atualizar_label
+            actions=[
+                ft.TextButton("Cancelar", on_click=eliminar_cancelado),
+                ft.TextButton("Eliminar", on_click=eliminar_confirmado),
+            ]
+        )
 
         # Dropdown como "label"
         opcoes_lista = [ft.dropdown.Option(key=opcao['id'], text=opcao['nome']) for opcao in opcoes_label] +\
@@ -252,9 +286,10 @@ class baseFormulario():
         self.page = page
 
         # Criar classes
-        self.dados = dadosFormulario(self.page)                               # Modelo de dados
-        self.estrutura = estruturaDeCampos(self.page, self.dados.resposta)    # Estrutura de campos
-        self.janela_rotulo = janelaNovoRotulo(self.page, self.dados.resposta, # Janela de rotulos
+        self.dados = dadosFormulario(self.page)                                          # Modelo de dados
+        self.estrutura = estruturaDeCampos(self.page, self.dados.resposta,                 # Estrutura de campos
+                        self.atualizar_estrutura_de_campos)    
+        self.janela_rotulo = janelaNovoRotulo(self.page, self.dados.resposta,              # Janela de rotulos
                         self.atualizar_estrutura_de_campos)    
         self.botoes = botoesFormulario(self.page, self.dados.resposta,        # Botões
                         self.ver_janela_nrotulo,
