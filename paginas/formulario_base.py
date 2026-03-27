@@ -94,7 +94,12 @@ class botoesFormulario():
         self.cliente = self.page.cliente
         self.tipo = self.page.session.get('tipo')
         resposta = self.cliente.rpc('salvar_formulario', {'p_tabela': self.tipo, 'p_dados': self.resposta}).execute()
-        self.page.session.set('id', resposta.data['id'])
+        
+        if resposta:
+            self.page.session.set('id', resposta.data['id'])
+            aviso(self.page, "Formulário salvo com sucesso!")
+        else:
+            aviso(self.page, "Erro ao salvar formulário!")
 
 
 class estruturaDeCampos():
