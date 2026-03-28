@@ -227,13 +227,23 @@ class montarFRI():
         caixa_mat = CaixaTexto(self.dados.capa['matricula'], 410, pontos=12)
         caixa_mat.fazer_caixa(can, largura, linha)
         largura += caixa_mat.largura_texto + 20
-        
+
         caixa_escopo_rotulo = CaixaTexto('Escopo:', 410, fonte='Times-Bold', pontos=12)
         caixa_escopo_rotulo.fazer_caixa(can, largura, linha)
         largura += caixa_escopo_rotulo.largura_texto + 5
         caixa_escopo = CaixaTexto(self.dados.capa['tipo_certificado'], 410, pontos=12)
         caixa_escopo.fazer_caixa(can, largura, linha)
-        
+        largura += caixa_escopo.largura_texto + 20
+
+        emissao = datetime.strptime(self.dados.capa['data_emissao'], '%Y-%m-%d')
+        validade =  emissao + relativedelta(years=1) - timedelta(days=1)
+        caixa_validade_rotulo = CaixaTexto('Validade:', 410, fonte='Times-Bold', pontos=12)
+        caixa_validade_rotulo.fazer_caixa(can, largura, linha)
+        largura += caixa_validade_rotulo.largura_texto + 5
+        caixa_validade = CaixaTexto(validade.strftime('%d/%m/%Y'), 410, pontos=12)
+        caixa_validade.fazer_caixa(can, largura, linha)
+
+
         linha_ass = CaixaTexto('Associado(s):', 160, fonte='Times-Bold', pontos= 12).fazer_caixa(can, 40, linha - 30)
         linha_ass -= 5
         for associado in self.dados.capa['associados']:
@@ -336,6 +346,6 @@ class montarFRI():
 
 if __name__ == "__main__":
     cliente = login_supabase()
-    montarCertificado(cliente, 66).imprimir_certificado()
-    #montarFRI(cliente, 111).imprimir_fri()
+    # montarCertificado(cliente, 66).imprimir_certificado()
+    montarFRI(cliente, 111).imprimir_fri()
     

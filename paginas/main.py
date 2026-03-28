@@ -96,4 +96,6 @@ def main(page: ft.Page):
 if __name__ == "__main__":
     import os
     port = int(os.environ.get("PORT", 8080))
-    ft.app(target=main, view=ft.AppView.WEB_BROWSER, port=port, host="0.0.0.0")
+    # Usando caminho absoluto para evitar bugs no servidor embutido dependendo do diretório de execução
+    diretorio_assets = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets")
+    ft.app(target=main, view=ft.AppView.WEB_BROWSER, port=port, host="0.0.0.0", assets_dir=diretorio_assets)

@@ -487,16 +487,37 @@ class imprimirEscopo():
         self.salvar_certificado()
 
     def salvar_certificado(self):
+        import os
+        import time
         if self.escopo:
             certificado = montarCertificado(self.page.cliente, self.page.session.get('id'))
             buffer_pdf = certificado.gerar_certificado()
+            nome_arquivo = f"certificado_{self.page.session.get('id')}_{int(time.time())}.pdf"
         else:
             certificado = montarFRI(self.page.cliente, self.page.session.get('id'))
             buffer_pdf = certificado.gerar_fri()
+            nome_arquivo = f"fri_{self.page.session.get('id')}_{int(time.time())}.pdf"
         
-        pdf_base64 = base64.b64encode(buffer_pdf).decode('utf-8')
-        data_url = f"data:application/pdf;base64,{pdf_base64}"
-        self.page.launch_url(url=data_url, web_window_name="_blank")
+        # Diretório temporário na pasta assets (resolvido a partir deste script)
+        caminho_dir = os.path.join(os.path.dirname(__file__), 'assets', 'certificados')
+        os.makedirs(caminho_dir, exist_ok=True)
+        
+        # Limpar arquivos antigos (mais de 1 hora) para não lotar o disco
+        agora = time.time()
+        for f in os.listdir(caminho_dir):
+            caminho_f = os.path.join(caminho_dir, f)
+            if os.path.isfile(caminho_f):
+                if agora - os.path.getmtime(caminho_f) > 3600:
+                    try:
+                        os.remove(caminho_f)
+                    except Exception:
+                        pass
+        
+        caminho_arquivo = os.path.join(caminho_dir, nome_arquivo)
+        with open(caminho_arquivo, "wb") as file_out:
+            file_out.write(buffer_pdf)
+            
+        self.page.launch_url(url=f"/certificados/{nome_arquivo}", web_window_name="_blank")
         
         
 class menuEscopo():
