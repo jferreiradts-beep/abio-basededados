@@ -309,8 +309,10 @@ class colunaIndividual:
             self.page.session.set('tipo', 'nucleo')
         elif self.nome == 'Grupos':
             self.page.session.set('tipo', 'grupo')
+            self.page.avancar_dados['nucleo_id'] = self.filtro['Núcleos']['id'][1:]
         elif self.nome == 'Escopos':
             self.page.session.set('tipo', 'escopo')
+            self.page.avancar_dados['matricula'] = self.filtro['Matriculas']['id']
         elif self.nome == 'Matriculas':
             pass
         else:
@@ -332,7 +334,7 @@ class colunaIndividual:
             self.page.session.set('id', id_final)
             
             # Exceção do painel grupo
-            if self.nome == 'Grupos' and self.filtro['Grupos']['id'] != '0':
+            if self.nome == 'Grupos' and id_final != '0':
                 self.page.go('/painel_grupo')
             else:
                 self.page.go('/formulario')
@@ -480,10 +482,10 @@ class dadosDashboard:
         escopos = dados_filtrados['id_escopo'].nunique()
         hoje = pd.Timestamp.today()
         um_mes = hoje + pd.DateOffset(months=1)
-        tres_meses = hoje + pd.DateOffset(months=3)
+        quatro_meses = hoje + pd.DateOffset(months=4)
         vencidos = dados_filtrados.loc[dados_filtrados['validade'] <= hoje, 'id_escopo'].nunique()
         escopos_1m = dados_filtrados.loc[(dados_filtrados['validade'] > hoje) & (dados_filtrados['validade'] <= um_mes), 'id_escopo'].nunique()
-        escopos_3m = dados_filtrados.loc[(dados_filtrados['validade'] > um_mes) & (dados_filtrados['validade'] <= tres_meses), 'id_escopo'].nunique()
+        escopos_4m = dados_filtrados.loc[(dados_filtrados['validade'] > um_mes) & (dados_filtrados['validade'] <= quatro_meses), 'id_escopo'].nunique()
      
         # Retornar os valores
         return {
@@ -491,7 +493,7 @@ class dadosDashboard:
             'c2': {'texto': 'Matrículas', 'valor': matriculas},
             'c3': {'texto': 'Associados', 'valor': ass_filtrados},
             'c4': {'texto': 'Escopos ativos', 'valor': escopos},
-            'c5': {'texto': 'Escopos a vencer (3m)', 'valor': escopos_3m},
+            'c5': {'texto': 'Escopos a vencer (4m)', 'valor': escopos_4m},
             'c6': {'texto': 'Escopos a vencer (1m)', 'valor': escopos_1m},
             'c7': {'texto': 'Escopos vencidos', 'valor': vencidos},
             'c8': {'texto': 'Escopos\ninativos', 'valor': 0}
@@ -546,7 +548,7 @@ class DashboardBase:
             'c2': {'texto': 'Matrículas', 'valor': 0},
             'c3': {'texto': 'Associados', 'valor': 0},
             'c4': {'texto': 'Escopos ativos', 'valor': 0},
-            'c5': {'texto': 'Escopos a vencer (3m)', 'valor': 0},
+            'c5': {'texto': 'Escopos a vencer (4m)', 'valor': 0},
             'c6': {'texto': 'Escopos a vencer (1m)', 'valor': 0},
             'c7': {'texto': 'Escopos vencidos', 'valor': 0},
             'c8': {'texto': 'Escopos\ninativos', 'valor': 0}

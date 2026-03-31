@@ -86,7 +86,7 @@ def main(page: ft.Page):
     
     # Lógica de entrada inicial
     if page.route == "/" or page.route == "" or page.route is None:
-        page.go("/login")
+        page.go("/dashboard")
     else:
         # Se veio com uma rota específica na URL (ex: /dashboard ou /recuperar-senha)
         # chamamos o route_change manualmente para processar a página atual

@@ -194,7 +194,7 @@ class grupoBase():
         largura_dados = (900 - 20 * 2) / 3
 
         outros_dados = ft.Row([], spacing=20, alignment=ft.MainAxisAlignment.START)
-        for dado in ['nucleo', 'coordenador', 'facilitador']:
+        for dado in ['nucleo', 'coordenador']:
             outros_dados.controls.append(
                 ft.Container(
                     width= largura_dados,

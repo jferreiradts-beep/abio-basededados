@@ -126,17 +126,22 @@ class estruturaDeCampos():
                 self.page.session.set("nome_escopo", nome_label)
 
         campo = ft.Text(metainformacao['rotulo'], width=largura[0], weight="bold")
+        
+        # Recuperar valor do avançar_dados INDEPENDENTE de ser Dropdown ou TextField
+        valor_inicial = valor_inicial or self.page.avancar_dados.get(chave, '')
+
         if len(opcoes) > 0:
             opcoes_lista = []
             encurtar = len(opcoes) > 6
             opcoes = sorted(opcoes, key=lambda x: x['nome'])
             for opcao in opcoes:
                 nome = opcao['nome'].split(' ')[0]+ ' ' + opcao['nome'].split(' ')[-1] if encurtar else opcao['nome']
-                opcoes_lista.append(ft.dropdown.Option(key=opcao['id'], text=nome))
-            valor = ft.Dropdown(value=valor_inicial, options=opcoes_lista, width=largura[1], text_style=ft.TextStyle(size=13), menu_height= 300,
+                opcoes_lista.append(ft.dropdown.Option(key=str(opcao['id']), text=nome))
+            
+            valor_ini_str = str(valor_inicial) if valor_inicial else None
+            valor = ft.Dropdown(value=valor_ini_str, options=opcoes_lista, width=largura[1], text_style=ft.TextStyle(size=13), menu_height= 300,
                                 on_change=lambda e, chave=chave: atualizar_valor(e, chave))
         else:
-            valor_inicial = valor_inicial or self.page.avancar_dados.get(chave, '')
             valor_inicial = formatar_cpf_cnpj(valor_inicial) if chave == 'cpf' else valor_inicial
             valor = ft.TextField(value=valor_inicial, width=largura[1], text_style=ft.TextStyle(size=13),
                                  on_blur=lambda e, chave=chave: atualizar_valor(e, chave))
@@ -147,7 +152,7 @@ class estruturaDeCampos():
 
         if metainformacao['rotulo'] == 'Tipo de escopo' and valor_inicial:
             self.page.session.set("tipo_escopo", valor_inicial)
-            nome_label = [opcao['nome'] for opcao in opcoes if opcao['id'] == valor_inicial][0]
+            nome_label = [opcao['nome'] for opcao in opcoes if str(opcao['id']) == str(valor_inicial)][0]
             self.page.session.set("nome_escopo", nome_label)
 
         return ft.Row([campo,valor], alignment=ft.MainAxisAlignment.CENTER, spacing=10)
@@ -279,12 +284,52 @@ class dadosFormulario():
 
         if self.tipo == 'uprod':
             self.titulo = f'Detalhe da Unidade de Produção'
+            self.subtitulo = self.obter_subtitulo()
         else:
             self.titulo = f'Detalhe d{self.tipo[-1]} {self.tipo.capitalize()}'
+            self.subtitulo = self.obter_subtitulo()
 
     def baixar_dados(self):
         dados = self.page.cliente.rpc('preencher_formulario', {'p_tabela': self.tipo, 'p_registro': self.id}).execute()
         return dados.data
+
+    def obter_subtitulo(self):
+        if self.id == '0' or self.tipo == 'nucleo':
+            return 'SPG ABIO'
+
+        if self.tipo == 'associado':
+            matriculas = self.page.cliente.table('rel_mat_asso').select('matricula').eq('associado_id', f"{self.id}").execute()
+            matriculas = [m['matricula'] for m in matriculas.data]
+            matriculas_texto = ' / '.join(matriculas)
+
+            cabecalho = self.page.cliente.table('vw_dados_com_associado').select('*').eq('matricula', matriculas[0]).execute()
+            cabecalho = cabecalho.data[0]
+            cabecalho = f"SPG ABIO - {cabecalho['nucleo']} - {cabecalho['grupo']} - {matriculas_texto}"
+            return f'Detalhes do associado - {matriculas_texto}'
+
+        elif self.tipo == 'uprod':
+            escopo_id = self.page.cliente.table('escopo').select('id').eq('uprod_id', f"{self.id}").execute()
+            escopo_id = escopo_id.data[0]['id']
+
+            cabecalho = self.page.cliente.table('vw_dados_com_associado').select('*').eq('id_escopo', f"e{escopo_id}").execute()
+            cabecalho = cabecalho.data[0]
+            cabecalho = f"SPG ABIO - {cabecalho['nucleo']} - {cabecalho['grupo']} - {cabecalho['matricula']}"
+            return cabecalho
+
+        elif self.tipo == 'grupo':
+            cabecalho = self.page.cliente.table('vw_dados_com_associado').select('*').eq('id_grupo', f"g{self.id}").execute()
+            cabecalho = cabecalho.data[0]
+            cabecalho = f"SPG ABIO - {cabecalho['nucleo']}"
+            return cabecalho
+
+        elif self.tipo == 'escopo':
+            cabecalho = self.page.cliente.table('vw_dados_com_associado').select('*').eq('id_escopo', f"e{self.id}").execute()
+            cabecalho = cabecalho.data[0]
+            cabecalho = f"SPG ABIO - {cabecalho['nucleo']} - {cabecalho['grupo']} - {cabecalho['matricula']}"
+            return cabecalho
+        else:
+            return None
+            
 
 class baseFormulario():
     def __init__(self, page):
@@ -292,11 +337,11 @@ class baseFormulario():
 
         # Criar classes
         self.dados = dadosFormulario(self.page)                                          # Modelo de dados
-        self.estrutura = estruturaDeCampos(self.page, self.dados.resposta,                 # Estrutura de campos
+        self.estrutura = estruturaDeCampos(self.page, self.dados.resposta,               # Estrutura de campos
                         self.atualizar_estrutura_de_campos)    
-        self.janela_rotulo = janelaNovoRotulo(self.page, self.dados.resposta,              # Janela de rotulos
+        self.janela_rotulo = janelaNovoRotulo(self.page, self.dados.resposta,            # Janela de rotulos
                         self.atualizar_estrutura_de_campos)    
-        self.botoes = botoesFormulario(self.page, self.dados.resposta,        # Botões
+        self.botoes = botoesFormulario(self.page, self.dados.resposta,                   # Botões
                         self.ver_janela_nrotulo,
                         self.atualizar_estrutura_de_campos)
 
@@ -335,7 +380,9 @@ class baseFormulario():
                 border_radius=10,
                 padding=20,
                 content=ft.Column([
+                    ft.Text(self.dados.subtitulo, weight="bold"),
                     ft.Text(self.dados.titulo, size=24, weight="bold"),
+                    ft.Divider(),
                     self.estrutura.area_rolavel,
                     self.botoes.botoes
                 ])
