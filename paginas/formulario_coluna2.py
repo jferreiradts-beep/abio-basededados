@@ -73,7 +73,9 @@ class verAcontecimentos():
         lista_acontecimentos = ft.Column([], scroll=ft.ScrollMode.AUTO, expand=True)
         for acontecimento in acontecimentos:
             tipo_acontecimento = next((item for item in self.dados_acontecimentos[1] if item['id'] == acontecimento['tipo_id']), None)
-            txt_data = ft.Text(value=acontecimento['data'], width=100, weight="bold" if tipo_acontecimento['destaque'] else "normal")
+            data_formatada = datetime.strptime(acontecimento['data'], '%Y-%m-%d')
+            data_formatada = data_formatada.strftime('%d-%m-%Y')
+            txt_data = ft.Text(value=data_formatada, width=100, weight="bold" if tipo_acontecimento['destaque'] else "normal")
             txt_tipo = ft.Text(value=tipo_acontecimento['nome'], width=200, weight="bold" if tipo_acontecimento['destaque'] else "normal")
             txt_observacoes = ft.Text(value=acontecimento['observacoes'], width=240, weight="bold" if tipo_acontecimento['destaque'] else "normal")
             btn_editar = ft.IconButton(ft.Icons.EDIT, on_click=lambda e, a=acontecimento: self.editar_acontecimento(e, a))
@@ -109,10 +111,18 @@ class verAcontecimentos():
             self.formulario_acontecimento['aviso'].value = ''
             self.formulario_acontecimento['aviso'].update()
 
-        for chave in ['data', 'tipo_id', 'observacoes']:
+        # Formatar data para DD-MM-AAAA
+        data_formatada = datetime.strptime(x['data'], '%Y-%m-%d')
+        data_formatada = data_formatada.strftime('%d-%m-%Y')
+        self.formulario_acontecimento['data'].value = data_formatada
+        self.formulario_acontecimento['data'].update()
+        
+        # Preencher os outros campos
+        for chave in ['tipo_id', 'observacoes']:
             self.formulario_acontecimento[chave].value = x[chave]
             self.formulario_acontecimento[chave].update()
 
+        # Atualizar botões
         for nome in ['adicionar', 'fechar']:
             self.botoes[nome].visible = False 
         for nome in ['alterar', 'eliminar', 'voltar']:
@@ -128,11 +138,11 @@ class verAcontecimentos():
         dados['escopo_id'] = self.page.session.get('id')
 
         try:
-            data_formatada = datetime.strptime(dados['data'], '%Y-%m-%d')
+            data_formatada = datetime.strptime(dados['data'], '%d-%m-%Y')
             dados['data'] = data_formatada.strftime('%Y-%m-%d')
                 
         except ValueError:
-            self.formulario_acontecimento['aviso'].value = "Por favor, insira uma data válida (AAAA-MM-DD)."
+            self.formulario_acontecimento['aviso'].value = "Por favor, insira uma data válida (DD-MM-AAAA)."
             self.formulario_acontecimento['aviso'].update()
             return
         
@@ -173,7 +183,7 @@ class verAcontecimentos():
         dados['escopo_id'] = self.id
 
         try:
-            data_formatada = datetime.strptime(dados['data'], '%Y-%m-%d')
+            data_formatada = datetime.strptime(dados['data'], '%d-%m-%Y')
             dados['data'] = data_formatada.strftime('%Y-%m-%d')
                 
         except ValueError:

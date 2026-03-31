@@ -29,15 +29,17 @@ def formatar_data(valor_bruto):
     data = re.sub(r'[^0-9]', '', valor_bruto)
     data = data[:8]
     
-    if len(data) <= 4:
+    if len(data) <= 2:
         valor = data
-    elif len(data) == 5 and data[4] > '1':
-        valor = f"{data[:4]}-0{data[4]}"
-    elif len(data) == 6 and int(data[4:]) > 12:
-        valor = f"{data[:4]}-0{data[4]}-{data[5]}"
-    elif len(data) <= 6:
-        valor = f"{data[:4]}-{data[4:]}"
+    elif len(data) == 2 and data[0] > '3':
+        valor = f"0{data[0]}-{data[1:]}"
+    elif len(data) == 3 and data[2] > '2':
+        valor = f"{data[:2]}-0{data[2]}"
+    elif len(data) == 3:
+        valor = f"{data[:2]}-{data[2]}"
+    elif len(data) == 4:
+        valor = f"{data[:2]}-{data[2:]}"
     else:
-        valor = f"{data[:4]}-{data[4:6]}-{data[6:]}"
+        valor = f"{data[:2]}-{data[2:4]}-{data[4:]}"
     
     return valor

@@ -1,6 +1,6 @@
 import flet as ft
 import pandas as pd
-from datetime import date
+from datetime import date, datetime
 from formulario_coluna2 import verAcontecimentos
 from escudo_supabase import login_supabase, aviso
 
@@ -89,11 +89,20 @@ class quadroTabela():
         def txt(valor):
             return ft.Text(valor, color=cor)
 
+        def data_formatada(data):
+            if data:
+                data_formatada = datetime.strptime(data, '%Y-%m-%d')
+                data_formatada = data_formatada.strftime('%d-%m-%Y')
+                return data_formatada
+            else:
+                return ''
+            
+
         return ft.DataRow(cells=[
             ft.DataCell(txt(item.get('matricula',          ''))),
             ft.DataCell(txt(item.get('primeiro_associado', ''))),
             ft.DataCell(txt(item.get('escopo',             ''))),
-            ft.DataCell(txt(item.get('validade',           ''))),
+            ft.DataCell(txt(data_formatada(item.get('validade')))),
             ft.DataCell(txt(item.get('ultimo_movimento',   ''))),
             ft.DataCell(botoes),
         ])
