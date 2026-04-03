@@ -344,6 +344,21 @@ class montarFRI():
         with open(f"Outros/fri_{self.escopo_id}.pdf", "wb") as f:
             f.write(self.gerar_fri())
 
+class montarFichaGrupos():
+    def __init__(self, cliente, grupo_id, ordem = 'matricula', ascendente = True):
+        self.cliente = cliente
+        self.grupo_id = grupo_id
+        self.ordem = ordem
+        self.ascendente = ascendente
+        self.dados = self.obter_dados_grupo()
+        
+    def obter_dados_grupo(self):
+        dados = self.cliente.rpc('painel_do_grupo', {'p_grupo_id': self.grupo_id}).execute()
+        return dados.data
+
+    def montar_ficha(self):
+        pass
+
 if __name__ == "__main__":
     cliente = login_supabase()
     # montarCertificado(cliente, 66).imprimir_certificado()

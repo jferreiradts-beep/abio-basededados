@@ -15,13 +15,13 @@ def main(page: ft.Page):
     page.avancar_dados = {}
 
     # Público: rotas que não precisam de login
-    PUBLIC_ROUTES = ["/login", "/recuperar-senha"]  
+    PUBLIC_ROUTES = ["/login", "/recuperar-senha", "/certificados/"]
 
     def route_change(route):
         import traceback
         
         # Verificar se o usuário está logado para rotas protegidas
-        rota_publica = any(page.route == r or page.route.startswith(r + "?") for r in PUBLIC_ROUTES)
+        rota_publica = any(page.route == r or page.route.startswith(r) for r in PUBLIC_ROUTES)
         if not rota_publica:
             try:
                 sessao = page.cliente.auth.get_session()
