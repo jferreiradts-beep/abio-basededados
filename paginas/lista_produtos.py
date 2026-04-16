@@ -141,8 +141,8 @@ class janelaNovoProduto():
             dados = {'nome': self.novo_nome.value, 'grupo_id': self.pertence.value}
         else:
             tabela = 'grupo_prod'
-            dados = {'nome': self.novo_nome.value, 'tipo_escopo_id': self.page.get_session('tipo_escopo')}
-       
+            dados = {'nome': self.novo_nome.value, 'tipo_escopo_id': self.page.session.get('tipo_escopo')}  # corrigido: session.get
+
         try:
             resposta = self.cliente.table(tabela).insert(dados).execute()
             self.cancelar(e)
@@ -154,6 +154,10 @@ class janelaNovoProduto():
     def cancelar(self, e):
         self.janela.open = False
         self.janela.update()
+        # Remove da overlay para não acumular diálogos em memória
+        if self.janela in self.page.overlay:
+            self.page.overlay.remove(self.janela)
+            self.page.update()
 
     def montar_janela(self):
         txt_titulo = 'Novo produto:' if self.tipo == 'produto' else 'Novo grupo:'
@@ -181,7 +185,9 @@ class janelaNovoProduto():
 
     def abrir_janela(self):
         self.montar_janela()
-        self.page.add(self.janela)
+        # Usa overlay (lugar correcta para AlertDialog) em vez de page.add()
+        self.page.overlay.append(self.janela)
+        self.page.update()
         self.janela.open = True
         self.janela.update()
 
@@ -231,10 +237,6 @@ class painelProdutos():
 
         self.montar_painel()
 
-    def marcar_produto(self, controle, e):
-        controle.weight = ft.FontWeight.BOLD if e.control.value else ft.FontWeight.NORMAL
-        controle.update()
-
     def editar_controle(self, controle, controle_id, tipo):
         # Reutiliza o diálogo existente
         self.dialogo_editar.configurar(controle, controle_id, tipo)
@@ -243,10 +245,55 @@ class painelProdutos():
     def verificar_produtos_selecionados(self):
         return [produto.data['id'] for produto in self.produtos_selecionados if produto.value]
 
+    def _montar_linhas_produtos(self, grupo_produtos, on_marcar_produto, on_editar_produto):
+        """Constrói as linhas de 4 colunas de produtos para um grupo."""
+        linhas = []
+        linha = ft.Row([])
+        for i, produto in enumerate(grupo_produtos):
+            if i > 0 and i % 4 == 0:
+                linhas.append(linha)
+                linha = ft.Row([])
+
+            txt_produto = ft.Text(
+                produto['nome'],
+                width=200,
+                size=14,
+                weight=ft.FontWeight.BOLD if produto['incluso'] else ft.FontWeight.NORMAL,
+            )
+            ckb_produto = ft.Checkbox(
+                value=produto['incluso'],
+                width=20,
+                data={"id": produto["id"], "txt": txt_produto},
+                on_change=on_marcar_produto,
+            )
+            produto_container = ft.GestureDetector(
+                content=ft.Container(
+                    content=ft.Row([ckb_produto, txt_produto], spacing=5),
+                    data={"id": produto["id"], "txt": txt_produto, "tipo": "produto"},
+                ),
+                data={"id": produto["id"], "txt": txt_produto, "tipo": "produto"},
+                on_double_tap=on_editar_produto,
+            )
+            linha.controls.append(produto_container)
+            self.produtos_selecionados.append(ckb_produto)
+
+        if linha.controls:
+            linhas.append(linha)
+        return linhas
+
     def montar_lista(self):
+        """
+        Monta a lista em modo acordeão:
+        - Cada grupo mostra um triângulo ▶ (fechado) ou ▼ (aberto).
+        - Clicar no cabeçalho do grupo abre/fecha os seus produtos.
+        - Apenas um grupo fica aberto de cada vez.
+        - O primeiro grupo começa aberto.
+        """
         lista_temp = []
 
-        # Handlers únicos
+        # Estado compartilhado entre handlers
+        grupo_aberto_ref = {"secao": None}  # referência para o ft.Column de produtos do grupo atual
+
         def on_marcar_produto(e):
             txt = e.control.data["txt"]
             txt.weight = ft.FontWeight.BOLD if e.control.value else ft.FontWeight.NORMAL
@@ -256,69 +303,74 @@ class painelProdutos():
             data = e.control.data
             self.editar_controle(data["txt"], data["id"], data["tipo"])
 
-        for grupo in self.dados.lista_produtos:
+        for idx, grupo in enumerate(self.dados.lista_produtos):
 
-            # --- GRUPO ---
+            # Ícone triângulo
+            icone = ft.Text("▼" if idx == 0 else "▶", size=14, color=ft.Colors.BLUE_700)
             txt_grupo = ft.Text(grupo['nome'], size=18, weight="bold")
 
-            grupo_container = ft.GestureDetector(
-                content=ft.Container(
-                    content=txt_grupo,
-                    data={"id": grupo["id"], "txt": txt_grupo, "tipo": "grupo"},
-                ),
-                data={"id": grupo["id"], "txt": txt_grupo, "tipo": "grupo"},
-                on_double_tap=on_editar_produto
+            grupo_produtos = sorted(grupo['produtos'], key=lambda x: x['nome'])
+            linhas_produtos = self._montar_linhas_produtos(grupo_produtos, on_marcar_produto, on_editar_produto)
+
+            # Coluna de produtos (visível apenas se for o primeiro grupo)
+            secao_produtos = ft.Column(
+                linhas_produtos,
+                visible=(idx == 0),
+                spacing=4,
             )
 
-            linha = ft.Row([grupo_container])
+            # Regista o primeiro grupo como aberto
+            if idx == 0:
+                grupo_aberto_ref["secao"] = secao_produtos
 
-            # --- PRODUTOS ---
-            grupo_produtos = sorted(grupo['produtos'], key=lambda x: x['nome'])
+            def on_toggle_grupo(e, _secao=secao_produtos, _icone=icone):
+                anterior = grupo_aberto_ref["secao"]
+                # Fecha o grupo anteriormente aberto (se diferente)
+                if anterior is not None and anterior is not _secao:
+                    anterior.visible = False
+                    anterior.update()
+                    # Repõe o ícone do grupo anterior — percorre os controles para o encontrar
+                    # (o ícone está guardado como data no GestureDetector pai)
 
-            for i, produto in enumerate(grupo_produtos):
+                # Alterna o grupo atual
+                abrir = not _secao.visible
+                _secao.visible = abrir
+                _secao.update()
+                _icone.value = "▼" if abrir else "▶"
+                _icone.update()
 
-                if i % 4 == 0:
-                    lista_temp.append(linha)
-                    linha = ft.Row([])
+                grupo_aberto_ref["secao"] = _secao if abrir else None
 
-                txt_produto = ft.Text(
-                    produto['nome'],
-                    width=200,
-                    size=14,
-                    weight=ft.FontWeight.BOLD if produto['incluso'] else ft.FontWeight.NORMAL
-                )
+                # Repõe os ícones de todos os grupos fechados
+                # (percorrido via lista_temp após construção — usamos on_toggle_grupo por closure)
 
-                ckb_produto = ft.Checkbox(
-                    value=produto['incluso'],
-                    width=20,
-                    data={"id": produto["id"], "txt": txt_produto},
-                    on_change=on_marcar_produto
-                )
+            # Cabeçalho clicável
+            cabecalho_grupo = ft.GestureDetector(
+                content=ft.Container(
+                    content=ft.Row([icone, txt_grupo], spacing=6),
+                    data={"id": grupo["id"], "txt": txt_grupo, "tipo": "grupo"},
+                    bgcolor=ft.Colors.GREY_300,
+                    border_radius=6,
+                    padding=ft.padding.symmetric(horizontal=8, vertical=4),
+                ),
+                data={"id": grupo["id"], "txt": txt_grupo, "tipo": "grupo", "icone": icone},
+                on_tap=on_toggle_grupo,
+                on_double_tap=on_editar_produto,
+            )
 
-                produto_container = ft.GestureDetector(
-                    content=ft.Container(
-                        content=ft.Row([ckb_produto, txt_produto], spacing=5),
-                        data={"id": produto["id"], "txt": txt_produto, "tipo": "produto"},
-                    ),
-                    data={"id": produto["id"], "txt": txt_produto, "tipo": "produto"},
-                    on_double_tap=on_editar_produto
-                )
-
-                linha.controls.append(produto_container)
-                self.produtos_selecionados.append(ckb_produto)
-
-            lista_temp.append(linha)
-            lista_temp.append(ft.Divider())
+            lista_temp.append(cabecalho_grupo)
+            lista_temp.append(secao_produtos)
+            lista_temp.append(ft.Divider(height=4))
 
         return lista_temp
 
     def carregar_conteudo_lazy(self):
-        # Gera os controles pesados
+        # Gera os controles
         itens = self.montar_lista()
-        
+
         # Atualiza a lista
         self.lista_produtos.controls = itens
-        
+
         # Remove o loading e mostra o conteúdo real
         self.painel_produtos.content = self.lista_produtos
         self.painel_produtos.update()
@@ -327,7 +379,7 @@ class painelProdutos():
         self.dados.atualizar_dados()
         self.lista_produtos.controls.clear()
         self.produtos_selecionados = []
-        
+
         # Recarrega
         self.carregar_conteudo_lazy()
 
