@@ -165,7 +165,7 @@ class montarCertificado():
         linha = 460
         for produto in sorted(self.dados.produtos, key=lambda x: (x['grupo'] == 'Outros', x['grupo'])):
             titulo = CaixaTexto(produto['grupo'], 700, fonte='Times-Bold')
-            lista_produtos = ', '.join(produto['produtos']) + ' //-----------------//'
+            lista_produtos = ', '.join(produto['produtos'])
             lista_produtos = CaixaTexto(lista_produtos, 700)
 
             if linha - titulo.altura - lista_produtos.altura < 60:
@@ -281,14 +281,23 @@ class montarFRI():
         buffer_produtos = BytesIO()
         can = canvas.Canvas(buffer_produtos, pagesize=portrait(A4))
         coluna = 560 / 2 + 5
-        i = 0
 
         linha = self.montar_cabecalho(can) - 20
 
         for i in range(0, len(lista_produtos), 2):
             produto1 = lista_produtos[i]
             produto2 = lista_produtos[i+1] if i+1 < len(lista_produtos) else None
-            
+
+            # Calcula a altura que a linha vai ocupar ANTES de desenhar
+            altura_linha = CaixaTexto(produto1, 145, pontos=12).altura
+            if produto2:
+                altura_linha = max(altura_linha, CaixaTexto(produto2, 145, pontos=12).altura)
+
+            # Verifica quebra de página ANTES de desenhar (evita página em branco no final)
+            if linha - altura_linha < 100:
+                can.showPage()
+                linha = self.montar_cabecalho(can) - 20
+
             p1_dados = CaixaTexto(produto1, 145, pontos=12)
             linha1 = linha2 = p1_dados.fazer_caixa(can, 40, linha)
             can.roundRect(200, linha -2, 30, 15, 5, stroke=1, fill=0)
@@ -302,13 +311,10 @@ class montarFRI():
 
             linha = min(linha1, linha2) - 5
 
-            if linha < 100:
-                can.showPage()
-                linha = self.montar_cabecalho(can) - 20
-            
         can.save()
         buffer_produtos.seek(0)
         return buffer_produtos
+
 
     def gerar_fri(self):
         pdf_produtos = PdfReader(self.gerar_pdf_produtos())
