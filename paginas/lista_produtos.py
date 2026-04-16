@@ -368,11 +368,14 @@ class painelProdutos():
         # Gera os controles
         itens = self.montar_lista()
 
-        # Atualiza a lista
+        # Atualiza os controles da coluna
         self.lista_produtos.controls = itens
 
-        # Remove o loading e mostra o conteúdo real
+        # Na primeira carga: content muda de ProgressRing → lista_produtos → Flet re-renderiza tudo.
+        # No refresh: content já é lista_produtos (mesma referência), por isso é preciso chamar
+        # lista_produtos.update() para o Flet enviar os novos controls ao cliente.
         self.painel_produtos.content = self.lista_produtos
+        self.lista_produtos.update()
         self.painel_produtos.update()
 
     def atualizar_painel(self):
