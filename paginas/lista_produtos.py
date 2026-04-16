@@ -368,15 +368,18 @@ class painelProdutos():
         # Gera os controles
         itens = self.montar_lista()
 
-        # Atualiza os controles da coluna
-        self.lista_produtos.controls = itens
+        # Detecta se é primeira carga (content ainda é o ProgressRing) ou refresh
+        ja_na_pagina = self.painel_produtos.content is self.lista_produtos
 
-        # Na primeira carga: content muda de ProgressRing → lista_produtos → Flet re-renderiza tudo.
-        # No refresh: content já é lista_produtos (mesma referência), por isso é preciso chamar
-        # lista_produtos.update() para o Flet enviar os novos controls ao cliente.
+        self.lista_produtos.controls = itens
         self.painel_produtos.content = self.lista_produtos
-        self.lista_produtos.update()
         self.painel_produtos.update()
+
+        # lista_produtos.update() só pode ser chamado depois de estar na página.
+        # Na primeira carga o painel_produtos.update() já tratou de tudo.
+        # No refresh é necessário forçar o update da coluna pois a referência não mudou.
+        if ja_na_pagina:
+            self.lista_produtos.update()
 
     def atualizar_painel(self):
         self.dados.atualizar_dados()
