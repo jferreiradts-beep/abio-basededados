@@ -280,7 +280,7 @@ class verProdutos():
 
     def obter_dados(self):
         resposta = self.page.cliente.rpc('obter_produtos', {'p_escopo_id': self.page.session.get('id')}).execute()
-        return resposta.data
+        return resposta.data or {}
 
     def montar_janela(self):
         # Caso não tenha um escopo salvo, exibe mensagem

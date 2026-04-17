@@ -30,12 +30,12 @@ class obterDados:
     def obter_associados_por_escopo(self):
         resposta = self.capa['associados']
         # Se nenhum associado estiver vinculado, mostrar todos
-        associados_vinculados = [v for v in resposta if v['vinculo']]
-        if len(associados_vinculados) == 0:
-            associados_vinculados = resposta
+        self.associados_vinculados = [v for v in resposta if v.get('vinculo', False)]
+        if len(self.associados_vinculados) == 0:
+            self.associados_vinculados = resposta
 
         texto = []
-        for associado in associados_vinculados:
+        for associado in self.associados_vinculados:
             texto.append(f"{associado['nome']} - {formatar_cpf_cnpj(associado['cpf'])}")
 
         return ', '.join(texto)
@@ -146,7 +146,7 @@ class montarCertificado():
         # Dados à direita: produtores
         linha = 520
         caixas_produtores = [CaixaTexto(f"Produtor(es):", 700, fonte='Times-Bold', pontos=10)]
-        for produtor in self.dados.capa['associados']:
+        for produtor in self.dados.associados_vinculados:
             caixas_produtores.append(CaixaTexto(produtor['nome'], 700, pontos=10))
 
         posicao = 60 + 700 - max(caixa.largura_texto for caixa in caixas_produtores)
@@ -247,7 +247,7 @@ class montarFRI():
 
         linha_ass = CaixaTexto('Associado(s):', 160, fonte='Times-Bold', pontos= 12).fazer_caixa(can, 40, linha - 30)
         linha_ass -= 5
-        for associado in self.dados.capa['associados']:
+        for associado in self.dados.associados_vinculados:
             linha_ass = CaixaTexto(associado['nome'], 160, pontos=12).fazer_caixa(can, 40, linha_ass)
 
         linha_gc = CaixaTexto('Grupo de Comercialização:', 200, fonte='Times-Bold', pontos=12).fazer_caixa(can, 200, linha-30)

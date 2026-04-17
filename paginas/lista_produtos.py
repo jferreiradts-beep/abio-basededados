@@ -305,7 +305,23 @@ class painelProdutos():
         lista_temp = []
 
         # Estado compartilhado entre handlers
-        grupo_aberto_ref = {"secao": None}  # referência para o ft.Column de produtos do grupo atual
+        grupo_aberto_ref = {"secao": None, "gp": None}  # grupo actualmente aberto
+
+        def _flush_e_evictar(gp, secao):
+            """Persiste o estado dos checkboxes → dados e liberta os widgets do grupo."""
+            ids_grupo = {p['id'] for p in gp}
+            restantes = []
+            for ckb in self.produtos_selecionados:
+                if ckb.data['id'] in ids_grupo:
+                    # Actualiza incluso no dict original (sorted() partilha referências)
+                    for p in gp:
+                        if p['id'] == ckb.data['id']:
+                            p['incluso'] = ckb.value
+                            break
+                else:
+                    restantes.append(ckb)
+            self.produtos_selecionados = restantes
+            secao.controls = []  # liberta widgets da memória
 
         def on_marcar_produto(e):
             txt = e.control.data["txt"]
@@ -340,20 +356,28 @@ class painelProdutos():
             # Regista o primeiro grupo como aberto
             if idx == 0:
                 grupo_aberto_ref["secao"] = secao_produtos
+                grupo_aberto_ref["gp"] = grupo_produtos
 
             def on_toggle_grupo(e, _secao=secao_produtos, _icone=icone, _gp=grupo_produtos):
-                anterior = grupo_aberto_ref["secao"]
-                # Fecha o grupo anteriormente aberto (se diferente)
-                if anterior is not None and anterior is not _secao:
-                    anterior.visible = False
-                    anterior.update()
+                anterior_secao = grupo_aberto_ref["secao"]
+                anterior_gp    = grupo_aberto_ref["gp"]
+
+                # Fecha e evicta o grupo anterior (se diferente)
+                if anterior_secao is not None and anterior_secao is not _secao:
+                    _flush_e_evictar(anterior_gp, anterior_secao)
+                    anterior_secao.visible = False
+                    anterior_secao.update()
 
                 # Alterna o grupo atual
                 abrir = not _secao.visible
 
-                # Lazy: constrói os produtos na primeira abertura
-                if abrir and not _secao.controls:
-                    _secao.controls = self._montar_linhas_produtos(_gp, on_marcar_produto, on_editar_produto)
+                if abrir:
+                    # Lazy: constrói os produtos na primeira abertura
+                    if not _secao.controls:
+                        _secao.controls = self._montar_linhas_produtos(_gp, on_marcar_produto, on_editar_produto)
+                else:
+                    # Fechar o grupo actual também o evicta
+                    _flush_e_evictar(_gp, _secao)
 
                 _secao.visible = abrir
                 _secao.update()
@@ -361,6 +385,7 @@ class painelProdutos():
                 _icone.update()
 
                 grupo_aberto_ref["secao"] = _secao if abrir else None
+                grupo_aberto_ref["gp"]    = _gp    if abrir else None
 
             # Cabeçalho clicável
             cabecalho_grupo = ft.GestureDetector(
