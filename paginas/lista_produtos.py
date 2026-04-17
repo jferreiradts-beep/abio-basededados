@@ -244,7 +244,17 @@ class painelProdutos():
         self.dialogo_editar.abrir_janela()
 
     def verificar_produtos_selecionados(self):
-        return [produto.data['id'] for produto in self.produtos_selecionados if produto.value]
+        # Produtos de grupos já abertos: usa o valor atual dos checkboxes
+        ids_renderizados = {ckb.data['id'] for ckb in self.produtos_selecionados}
+        selecionados = {ckb.data['id'] for ckb in self.produtos_selecionados if ckb.value}
+
+        # Produtos de grupos nunca abertos (lazy): preserva o valor original de incluso
+        for grupo in self.dados.lista_produtos:
+            for produto in grupo['produtos']:
+                if produto['id'] not in ids_renderizados and produto['incluso']:
+                    selecionados.add(produto['id'])
+
+        return list(selecionados)
 
     def _montar_linhas_produtos(self, grupo_produtos, on_marcar_produto, on_editar_produto):
         """Constrói as linhas de 4 colunas de produtos para um grupo."""
@@ -289,6 +299,8 @@ class painelProdutos():
         - Clicar no cabeçalho do grupo abre/fecha os seus produtos.
         - Apenas um grupo fica aberto de cada vez.
         - O primeiro grupo começa aberto.
+        - Lazy loading: os produtos são construídos apenas na primeira
+          abertura de cada grupo (exceto o primeiro, pré-construído).
         """
         lista_temp = []
 
@@ -311,11 +323,16 @@ class painelProdutos():
             txt_grupo = ft.Text(grupo['nome'], size=18, weight="bold")
 
             grupo_produtos = sorted(grupo['produtos'], key=lambda x: unicodedata.normalize('NFD', x['nome']))
-            linhas_produtos = self._montar_linhas_produtos(grupo_produtos, on_marcar_produto, on_editar_produto)
+
+            # Lazy: primeiro grupo pré-construído; restantes começam vazios
+            if idx == 0:
+                linhas_iniciais = self._montar_linhas_produtos(grupo_produtos, on_marcar_produto, on_editar_produto)
+            else:
+                linhas_iniciais = []
 
             # Coluna de produtos (visível apenas se for o primeiro grupo)
             secao_produtos = ft.Column(
-                linhas_produtos,
+                linhas_iniciais,
                 visible=(idx == 0),
                 spacing=4,
             )
@@ -324,26 +341,26 @@ class painelProdutos():
             if idx == 0:
                 grupo_aberto_ref["secao"] = secao_produtos
 
-            def on_toggle_grupo(e, _secao=secao_produtos, _icone=icone):
+            def on_toggle_grupo(e, _secao=secao_produtos, _icone=icone, _gp=grupo_produtos):
                 anterior = grupo_aberto_ref["secao"]
                 # Fecha o grupo anteriormente aberto (se diferente)
                 if anterior is not None and anterior is not _secao:
                     anterior.visible = False
                     anterior.update()
-                    # Repõe o ícone do grupo anterior — percorre os controles para o encontrar
-                    # (o ícone está guardado como data no GestureDetector pai)
 
                 # Alterna o grupo atual
                 abrir = not _secao.visible
+
+                # Lazy: constrói os produtos na primeira abertura
+                if abrir and not _secao.controls:
+                    _secao.controls = self._montar_linhas_produtos(_gp, on_marcar_produto, on_editar_produto)
+
                 _secao.visible = abrir
                 _secao.update()
                 _icone.value = "▼" if abrir else "▶"
                 _icone.update()
 
                 grupo_aberto_ref["secao"] = _secao if abrir else None
-
-                # Repõe os ícones de todos os grupos fechados
-                # (percorrido via lista_temp após construção — usamos on_toggle_grupo por closure)
 
             # Cabeçalho clicável
             cabecalho_grupo = ft.GestureDetector(
