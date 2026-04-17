@@ -1,5 +1,8 @@
 import flet as ft
+import locale
 from escudo_supabase import login_supabase, aviso
+
+locale.setlocale(locale.LC_COLLATE, 'pt_PT.UTF-8')
 
 
 class DialogoEditarControle():
@@ -309,7 +312,7 @@ class painelProdutos():
             icone = ft.Text("▼" if idx == 0 else "▶", size=14, color=ft.Colors.BLUE_700)
             txt_grupo = ft.Text(grupo['nome'], size=18, weight="bold")
 
-            grupo_produtos = sorted(grupo['produtos'], key=lambda x: x['nome'])
+            grupo_produtos = sorted(grupo['produtos'], key=lambda x: locale.strxfrm(x['nome']))
             linhas_produtos = self._montar_linhas_produtos(grupo_produtos, on_marcar_produto, on_editar_produto)
 
             # Coluna de produtos (visível apenas se for o primeiro grupo)
@@ -466,7 +469,7 @@ class dadosProdutos():
         lista_produtos = lista_produtos.data
 
         self.escopo = lista_produtos['escopo']
-        self.lista_produtos = sorted(lista_produtos['grupos'], key=lambda x: x['nome'])
+        self.lista_produtos = sorted(lista_produtos['grupos'], key=lambda x: locale.strxfrm(x['nome']))
 
 
 class baseProdutos():

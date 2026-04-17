@@ -5,6 +5,9 @@ from pypdf import PdfReader, PdfWriter
 from io import BytesIO
 from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
+import locale
+
+locale.setlocale(locale.LC_COLLATE, 'pt_PT.UTF-8')
 
 from escudo_supabase import login_supabase
 from formatar_campos import formatar_cpf_cnpj
@@ -163,7 +166,7 @@ class montarCertificado():
         # Criar os produtos
         self.criar_canvas_cab_produtos(can)
         linha = 460
-        for produto in sorted(self.dados.produtos, key=lambda x: (x['grupo'] == 'Outros', x['grupo'])):
+        for produto in sorted(self.dados.produtos, key=lambda x: (x['grupo'] == 'Outros', locale.strxfrm(x['grupo']))):
             titulo = CaixaTexto(produto['grupo'], 700, fonte='Times-Bold')
             lista_produtos = ', '.join(produto['produtos'])
             lista_produtos = CaixaTexto(lista_produtos, 700)
@@ -276,7 +279,7 @@ class montarFRI():
         lista_produtos = []
         for produto in self.dados.produtos:
             lista_produtos.extend(produto['produtos'])
-        lista_produtos = sorted(lista_produtos)
+        lista_produtos = sorted(lista_produtos, key=locale.strxfrm)
 
         buffer_produtos = BytesIO()
         can = canvas.Canvas(buffer_produtos, pagesize=portrait(A4))
