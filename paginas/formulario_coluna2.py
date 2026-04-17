@@ -1,11 +1,9 @@
 import flet as ft
 import pandas as pd
 import base64
-import locale
+import unicodedata
 from datetime import datetime
 from formatar_campos import formatar_cpf_cnpj, formatar_data
-
-locale.setlocale(locale.LC_COLLATE, 'pt_PT.UTF-8')
 from gerar_certificado import montarCertificado, montarFRI
 
 
@@ -297,7 +295,7 @@ class verProdutos():
             
         self.coluna_produtos = ft.Column([], scroll=ft.ScrollMode.AUTO)
         for grupo in grupos_produtos:
-            lista_txt = ', '.join(sorted(grupo['produtos'], key=locale.strxfrm))
+            lista_txt = ', '.join(sorted(grupo['produtos'], key=lambda s: unicodedata.normalize('NFD', s)))
             subcoluna = ft.Column([
                     ft.Text(grupo['grupo'], size=16, weight="bold"),
                     ft.Text(lista_txt + '.'),
