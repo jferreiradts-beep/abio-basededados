@@ -1,6 +1,9 @@
 from reportlab.pdfgen import canvas
 from reportlab.pdfbase.pdfmetrics import stringWidth
 from reportlab.lib.pagesizes import A4, landscape, portrait
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.lib import colors
 from pypdf import PdfReader, PdfWriter
 from io import BytesIO
 from datetime import datetime, timedelta
@@ -352,19 +355,100 @@ class montarFRI():
             f.write(self.gerar_fri())
 
 class montarFichaGrupos():
-    def __init__(self, cliente, grupo_id, ordem = 'matricula', ascendente = True):
+    def __init__(self, cliente, dados_gerais, dados_tabela):
         self.cliente = cliente
-        self.grupo_id = grupo_id
-        self.ordem = ordem
-        self.ascendente = ascendente
-        self.dados = self.obter_dados_grupo()
-        
-    def obter_dados_grupo(self):
-        dados = self.cliente.rpc('painel_do_grupo', {'p_grupo_id': self.grupo_id}).execute()
-        return dados.data
+        self.dados_gerais = dados_gerais
+        self.dados_tabela = dados_tabela
 
-    def montar_ficha(self):
-        pass
+    def gerar_pdf(self):
+        from reportlab.lib.enums import TA_CENTER
+        
+        buffer = BytesIO()
+        doc = SimpleDocTemplate(buffer, pagesize=landscape(A4), rightMargin=30, leftMargin=30, topMargin=30, bottomMargin=30)
+        elementos = []
+        
+        styles = getSampleStyleSheet()
+        estilo_titulo = styles['Heading1']
+        estilo_normal = styles['Normal']
+        
+        estilo_celula = styles['Normal'].clone('estilo_celula')
+        estilo_celula.alignment = TA_CENTER
+        estilo_celula.fontSize = 10
+        estilo_celula.leading = 12
+        
+        # Cabeçalho
+        elementos.append(Paragraph(f"<b>Grupo:</b> {self.dados_gerais.get('nome', '')}", estilo_titulo))
+        elementos.append(Paragraph(f"<b>Núcleo:</b> {self.dados_gerais.get('nucleo', '')}   |   <b>Coordenador:</b> {self.dados_gerais.get('coordenador', '')}", estilo_normal))
+        elementos.append(Spacer(1, 20))
+        
+        # Tabela
+        dados_tabela_pdf = [['Matrícula', 'Primeiro Associado', 'Escopo', 'Validade', 'Últ. Movimento', 'Observações']]
+        
+        for item in self.dados_tabela:
+            validade = item.get('validade', '')
+            if validade:
+                validade = datetime.strptime(validade, '%Y-%m-%d').strftime('%d/%m/%Y')
+            
+            ultimo_movimento = item.get('ultimo_movimento', '')
+            if ultimo_movimento:
+                # O último movimento costuma vir no formato DD/MM/AAAA ou YYYY-MM-DD dependendo do BD. Se falhar o parse, usa o texto puro.
+                try:
+                    if '-' in ultimo_movimento:
+                        ultimo_movimento = datetime.strptime(ultimo_movimento, '%Y-%m-%d').strftime('%d/%m/%Y')
+                except ValueError:
+                    pass
+
+            linha = [
+                item.get('matricula', ''),
+                Paragraph(item.get('primeiro_associado', ''), estilo_celula),
+                Paragraph(item.get('escopo', ''), estilo_celula),
+                validade,
+                Paragraph(ultimo_movimento, estilo_celula),
+                '' # Observações em branco
+            ]
+            dados_tabela_pdf.append(linha)
+            
+        tabela = Table(dados_tabela_pdf, colWidths=[60, 200, 150, 70, 80, 220])
+        tabela.setStyle(TableStyle([
+            ('BACKGROUND', (0,0), (-1,0), colors.grey),
+            ('TEXTCOLOR', (0,0), (-1,0), colors.whitesmoke),
+            ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+            ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0,0), (-1,0), 10),
+            ('BOTTOMPADDING', (0,0), (-1,0), 12),
+            ('BACKGROUND', (0,1), (-1,-1), colors.white),
+            ('GRID', (0,0), (-1,-1), 1, colors.black),
+            ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+        ]))
+        
+        elementos.append(tabela)
+        doc.build(elementos)
+        
+        buffer.seek(0)
+        return buffer.getvalue()
+
+    def imprimir_ficha(self, grupo_id):
+        import time, os
+        nome_arquivo = f"ficha_grupo_{grupo_id}_{int(time.time())}.pdf"
+        caminho_dir = os.path.join(os.path.dirname(__file__), 'assets', 'certificados')
+        os.makedirs(caminho_dir, exist_ok=True)
+        
+        # Limpar arquivos antigos (mais de 1 hora) para não lotar o disco
+        agora = time.time()
+        for f in os.listdir(caminho_dir):
+            caminho_f = os.path.join(caminho_dir, f)
+            if os.path.isfile(caminho_f):
+                if agora - os.path.getmtime(caminho_f) > 3600:
+                    try:
+                        os.remove(caminho_f)
+                    except Exception:
+                        pass
+                        
+        caminho_arquivo = os.path.join(caminho_dir, nome_arquivo)
+        with open(caminho_arquivo, "wb") as f:
+            f.write(self.gerar_pdf())
+            
+        return f"/certificados/{nome_arquivo}"
 
 if __name__ == "__main__":
     cliente = login_supabase()

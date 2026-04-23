@@ -138,8 +138,9 @@ class quadroTabela():
 
 
 class linhaBotoes():
-    def __init__(self, page):
+    def __init__(self, page, pai=None):
         self.page = page
+        self.pai = pai
 
     def botoes_acoes(self, acao):
         if acao == 'editar':
@@ -151,7 +152,11 @@ class linhaBotoes():
             self.page.go('/formulario')
 
         elif acao == 'imprimir':
-            print('imprimir')
+            from gerar_certificado import montarFichaGrupos
+            if self.pai:
+                ficha = montarFichaGrupos(self.page.cliente, self.pai.dados['dados_gerais'], self.pai.dados_tabela.dados)
+                url_pdf = ficha.imprimir_ficha(self.page.session.get("id"))
+                self.page.launch_url(url=url_pdf, web_window_name="_blank")
 
         elif acao == 'voltar':
             retorno = self.page.voltar_dados['endereco'][-1] if self.page.voltar_dados['endereco'] else '/dashboard'
@@ -254,7 +259,7 @@ class grupoBase():
 
 
         # 4️⃣ Botões
-        linha_botoes = linhaBotoes(self.page).montar_linha_botoes()
+        linha_botoes = linhaBotoes(self.page, self).montar_linha_botoes()
 
         # Adicionar à pagina
         self.page.add(
