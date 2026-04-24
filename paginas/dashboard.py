@@ -588,10 +588,60 @@ class DashboardBase:
             icon=ft.Icons.MENU,
             items=[
                 ft.PopupMenuItem(text="Limpar filtros", on_click=self.colunas.limpar_filtro),
-                ft.PopupMenuItem(text="Configurações", on_click=lambda _: self.page.go("/configuracoes"))
+                ft.PopupMenuItem(text="Configurações", on_click=lambda _: self.page.go("/configuracoes")),
+                ft.PopupMenuItem(text="Relatório MAPA", on_click=self.baixar_csv_mapa)
             ]
         )
         return menu
+
+    def baixar_csv_mapa(self, e):
+        import os
+        import time
+        import pandas as pd
+        
+        self.page.snack_bar = ft.SnackBar(ft.Text("Gerando CSV..."), bgcolor="blue")
+        self.page.snack_bar.open = True
+        self.page.update()
+
+        try:
+            resposta = self.page.cliente.table('vw_mapa_mapa').select('*').execute()
+            if not resposta.data:
+                self.page.snack_bar = ft.SnackBar(ft.Text("Nenhum dado encontrado na view."), bgcolor="orange")
+                self.page.snack_bar.open = True
+                self.page.update()
+                return
+
+            df = pd.DataFrame(resposta.data)
+            csv_str = df.to_csv(index=False, sep=';', encoding='utf-8-sig')
+
+            nome_arquivo = f"mapa_dados_{int(time.time())}.csv"
+            caminho_dir = os.path.join(os.path.dirname(__file__), 'assets', 'certificados')
+            os.makedirs(caminho_dir, exist_ok=True)
+            
+            agora = time.time()
+            for f in os.listdir(caminho_dir):
+                caminho_f = os.path.join(caminho_dir, f)
+                if os.path.isfile(caminho_f):
+                    if agora - os.path.getmtime(caminho_f) > 3600:
+                        try:
+                            os.remove(caminho_f)
+                        except Exception:
+                            pass
+            
+            caminho_arquivo = os.path.join(caminho_dir, nome_arquivo)
+            with open(caminho_arquivo, "w", encoding="utf-8-sig") as file_out:
+                file_out.write(csv_str)
+                
+            self.page.launch_url(url=f"/certificados/{nome_arquivo}", web_window_name="_blank")
+            
+            self.page.snack_bar = ft.SnackBar(ft.Text("Download iniciado!"), bgcolor="green")
+            self.page.snack_bar.open = True
+            self.page.update()
+            
+        except Exception as erro:
+            self.page.snack_bar = ft.SnackBar(ft.Text(f"Erro ao gerar CSV: {erro}"), bgcolor="red")
+            self.page.snack_bar.open = True
+            self.page.update()
 
     def montar_layout(self):
         # Cabeçalho
