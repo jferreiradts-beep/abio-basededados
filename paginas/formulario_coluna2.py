@@ -501,7 +501,16 @@ class imprimirEscopo():
         import os
         import time
         if self.escopo:
-            certificado = montarCertificado(self.page.cliente, self.page.session.get('id'))
+            resposta = self.page.cliente.table('configuracoes').select('assinatura, assinatura_cargo').eq('id', 1).execute()
+            if resposta.data:
+                config = resposta.data[0]
+                nome_assinante = config.get('assinatura') or "WELLINGTON MARY"
+                cargo_assinante = config.get('assinatura_cargo') or "DIRETOR TÉCNICO DA ABIO"
+            else:
+                nome_assinante = "WELLINGTON MARY"
+                cargo_assinante = "DIRETOR TÉCNICO DA ABIO"
+            
+            certificado = montarCertificado(self.page.cliente, self.page.session.get('id'), nome_assinante, cargo_assinante)
             buffer_pdf = certificado.gerar_certificado()
             nome_arquivo = f"certificado_{self.page.session.get('id')}_{int(time.time())}.pdf"
         else:

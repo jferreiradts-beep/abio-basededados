@@ -433,14 +433,20 @@ class colunasDashboard:
 
 
 class dadosDashboard:
-    def __init__(self, cliente):
+    def __init__(self, cliente, situacoes=None):
+        if situacoes is None:
+            situacoes = ['ativo', 'suspenso', 'cancelado']
         self.atualizar_cards = None
-        self.baixar_dados(cliente)
+        self.baixar_dados(cliente, situacoes)
 
-    def baixar_dados(self, cliente):
+    def baixar_dados(self, cliente, situacoes):
         # Baixar dados
         self.dados = cliente.table('vw_dados_com_associado').select('*').execute()
-        self.dados = pd.DataFrame(self.dados.data)
+        df = pd.DataFrame(self.dados.data)
+        if 'situacao' in df.columns:
+            df = df[df['situacao'].isin(situacoes)]
+        self.dados = df
+        
         self.dados_de_associados = cliente.table('vw_escopo_cpf_visivel').select('*').execute()
         self.dados_de_associados = pd.DataFrame(self.dados_de_associados.data)
 
@@ -555,7 +561,16 @@ class DashboardBase:
         }
 
         # Criar componentes
-        self.dados = dadosDashboard(self.page.cliente)
+        situacoes = ['ativo']
+        resposta = self.page.cliente.table('configuracoes').select('suspenso, cancelado').eq('id', 1).execute()
+        if resposta.data:
+            config = resposta.data[0]
+            if config.get('suspenso', True): situacoes.append('suspenso')
+            if config.get('cancelado', True): situacoes.append('cancelado')
+        else:
+            situacoes = ['ativo', 'suspenso', 'cancelado']
+        
+        self.dados = dadosDashboard(self.page.cliente, situacoes)
         self.cards = gridCards(valores_cards_inicial)
         self.mapa = painelMapa(self.page, self.dados)
 
@@ -572,7 +587,8 @@ class DashboardBase:
         menu = ft.PopupMenuButton(
             icon=ft.Icons.MENU,
             items=[
-                ft.PopupMenuItem(text="Limpar filtros", on_click=self.colunas.limpar_filtro)
+                ft.PopupMenuItem(text="Limpar filtros", on_click=self.colunas.limpar_filtro),
+                ft.PopupMenuItem(text="Configurações", on_click=lambda _: self.page.go("/configuracoes"))
             ]
         )
         return menu

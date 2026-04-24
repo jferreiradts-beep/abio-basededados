@@ -7,6 +7,7 @@ from escudo_supabase import escudo_supabase, login_supabase, criar_cliente_supab
 from pag_login import LoginBase
 from pag_recuperar_senha import RecuperarSenhaBase
 from grupo_dashboard import grupoBase
+from pag_configuracoes import ConfiguracoesBase
 
 def main(page: ft.Page):
     # Inicializa cliente sem logar automaticamente (agora o login é na tela)
@@ -51,6 +52,8 @@ def main(page: ft.Page):
                 grupoBase(page)
             elif page.route == "/recuperar-senha" or page.route.startswith("/recuperar-senha?"):
                 RecuperarSenhaBase(page)
+            elif page.route == "/configuracoes":
+                ConfiguracoesBase(page)
             page.update()
         except Exception as e:
             error_trace = traceback.format_exc()

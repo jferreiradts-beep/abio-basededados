@@ -114,9 +114,11 @@ class CaixaTexto:
                 cursor += extra
     
 class montarCertificado():
-    def __init__(self, cliente, escopo_id):
+    def __init__(self, cliente, escopo_id, nome_assinante="WELLINGTON MARY", cargo_assinante="DIRETOR TÉCNICO DA ABIO"):
         self.cliente = cliente
         self.escopo_id = escopo_id
+        self.nome_assinante = nome_assinante
+        self.cargo_assinante = cargo_assinante
         self.dados = obterDados(self.cliente, self.escopo_id)
     
     def criar_canvas_capa(self, can):
@@ -137,8 +139,8 @@ class montarCertificado():
         validade =  emissao + relativedelta(years=1) - timedelta(days=1)
         CaixaTexto(f"Data de Validade: {validade.strftime('%d/%m/%Y')}", 700, fonte='Times-Bold', pontos=14).fazer_caixa(can, 60, 80, 'direita')
         
-        linha = CaixaTexto('WELLINGTON MARY', 700, fonte='Times-Bold', pontos=14).fazer_caixa(can, 60, 80, 'centro')
-        linha = CaixaTexto('DIRECTOR TÉCNICO DA ABIO', 700, fonte='Times-Bold', pontos=10).fazer_caixa(can, 60, linha, 'centro')
+        linha = CaixaTexto(self.nome_assinante, 700, fonte='Times-Bold', pontos=14).fazer_caixa(can, 60, 80, 'centro')
+        linha = CaixaTexto(self.cargo_assinante, 700, fonte='Times-Bold', pontos=10).fazer_caixa(can, 60, linha, 'centro')
 
     def criar_canvas_cab_produtos(self, can):
         # Dados à esquerda: matrícula e validade
