@@ -26,12 +26,17 @@ class janelaNovaMatricula():
 
         self.grupo = ft.Dropdown(label='Grupo', value=grupo_id, options=lista_grupos)
         self.matricula = ft.TextField(label='Matricula')
+        self.mensagem = ft.Text(value="", size=10, color="red")
         
         self.janela= ft.AlertDialog(
             title=ft.Text("Nova matricula"),
             content=ft.Container(
-                width=350, height=100,
-                content=ft.Column([self.grupo, self.matricula])
+                width=350, height=150,
+                content=ft.Column([
+                    self.grupo, 
+                    self.matricula,
+                    ft.Row([self.mensagem])
+                ])
             ),
             actions=[
                 ft.TextButton("Cancelar", on_click=self.fechar_janela_nova_matricula),
@@ -49,28 +54,33 @@ class janelaNovaMatricula():
 
     def salvar_nova_matricula(self, e):
         print("MATRICULA", self.matricula.value)
+        self.mensagem.value = ""
+        self.janela.update()
+        
         # Testar matricula
         if not re.fullmatch(r'^\d{2}-\d{3}$', self.matricula.value):
-            self.page.snack_bar = ft.SnackBar( ft.Text(f"Matricula inválida"), bgcolor="red" )
-            self.page.snack_bar.open = True
-            self.page.update()
+            self.mensagem.value = "Matricula inválida"
+            self.janela.update()
+            return
         
         # Salvar matricula
         try:
-            resposta = self.page.cliente.table('matriculas').insert({
+            self.page.cliente.table('matriculas').insert({
                 'grupo_id': self.grupo.value,
                 'matricula': self.matricula.value
             }).execute()
             
-            print("RESPOSTA", resposta.data[0])
-            self.page.session.set('id', resposta.data[0]['matricula'])
+            self.page.session.set('id', self.matricula.value)
+            
+            self.janela.open = False
+            self.page.update()
+            
             self.page.go('/matricula')
 
         except Exception as error:
             print("ERROR", error)
-            self.page.snack_bar = ft.SnackBar( ft.Text(f"Erro ao salvar matricula: {error}"), bgcolor="red" )
-            self.page.snack_bar.open = True
-            self.page.update()
+            self.mensagem.value = f"Erro ao salvar matricula: {error}"
+            self.janela.update()
 
 class gridCards:
     def __init__(self, valores):
@@ -444,7 +454,7 @@ class dadosDashboard:
         self.dados = cliente.table('vw_dados_com_associado').select('*').execute()
         df = pd.DataFrame(self.dados.data)
         if 'situacao' in df.columns:
-            df = df[df['situacao'].isin(situacoes)]
+            df = df[df['situacao'].isin(situacoes) | df['situacao'].isna() | (df['situacao'] == '')]
         self.dados = df
         
         self.dados_de_associados = cliente.table('vw_escopo_cpf_visivel').select('*').execute()
