@@ -53,7 +53,6 @@ class janelaNovaMatricula():
         self.page.update()
 
     def salvar_nova_matricula(self, e):
-        print("MATRICULA", self.matricula.value)
         self.mensagem.value = ""
         self.janela.update()
         
@@ -79,7 +78,11 @@ class janelaNovaMatricula():
 
         except Exception as error:
             print("ERROR", error)
-            self.mensagem.value = f"Erro ao salvar matricula: {error}"
+            erro_str = str(error).lower()
+            if '23505' in erro_str or 'duplicate key' in erro_str:
+                self.mensagem.value = f"A matrícula {self.matricula.value} já está atribuída."
+            else:
+                self.mensagem.value = f"Erro ao salvar matricula: {error}"
             self.janela.update()
 
 class gridCards:

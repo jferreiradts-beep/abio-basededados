@@ -536,7 +536,8 @@ class imprimirEscopo():
         caminho_arquivo = os.path.join(caminho_dir, nome_arquivo)
         with open(caminho_arquivo, "wb") as file_out:
             file_out.write(buffer_pdf)
-            
+
+        print(f"Certificado gerado: {nome_arquivo}")            
         self.page.launch_url(url=f"/certificados/{nome_arquivo}", web_window_name="_blank")
         
         

@@ -342,7 +342,6 @@ class MatriculaBase:
         menu = ft.PopupMenuButton(
             icon=ft.Icons.MENU,
             items=[
-                ft.PopupMenuItem(text="Limpar filtros", on_click=lambda e: self.coluna_matricula.selecionar('limpar', None)),
                 ft.PopupMenuItem(text="Eliminar matrícula", on_click=lambda e: Eliminar(self.page))
             ]
         )

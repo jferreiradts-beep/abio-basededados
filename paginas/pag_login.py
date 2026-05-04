@@ -60,6 +60,7 @@ class LoginBase:
         try:
             # Tenta autenticar
             self.page.cliente.auth.sign_in_with_password({ "email": email_val, "password": senha_val })
+            print(self.page.cliente.auth.get_user())
             
             # Se deu certo, vai pro dashboard
             self.page.go("/dashboard")

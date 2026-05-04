@@ -32,6 +32,7 @@ class obterDados:
 
     def obter_associados_por_escopo(self):
         resposta = self.capa['associados']
+        
         # Se nenhum associado estiver vinculado, mostrar todos
         self.associados_vinculados = [v for v in resposta if v.get('vinculo', False)]
         if len(self.associados_vinculados) == 0:
