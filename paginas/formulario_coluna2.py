@@ -5,6 +5,7 @@ import unicodedata
 from datetime import datetime
 from formatar_campos import formatar_cpf_cnpj, formatar_data
 from gerar_certificado import montarCertificado, montarFRI
+from escudo_supabase import aviso
 
 
 def funcao_menu_lateral(page, *args):
@@ -476,12 +477,12 @@ class novaUProd():
             self.dados['opcoes']['uprod_id'].append({'id': novo_id, 'nome': dados['nome']})
             self.dados['dados_fixos']['uprod_id'] = novo_id
 
-            self.cancelar_uprod(None)
+            self.fechar_janela_nuprod(None)
             aviso(self.page, f"Unidade de produção criada com sucesso! ID: {novo_id}")
             self.atualizar_formulario()
 
         except Exception as e:
-            self.cancelar_uprod(None)
+            self.fechar_janela_nuprod(None)
             aviso(self.page, f"Erro ao criar unidade de produção: {e}")
 
     def exibir_janela_nova_uprod(self):

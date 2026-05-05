@@ -14,6 +14,7 @@ def main(page: ft.Page):
     page.cliente = criar_cliente_supabase()
     page.voltar_dados = {'endereco': [], 'dados_pagina': []}
     page.avancar_dados = {}
+    page.auth_user = None  # Cache para o usuário autenticado
 
     # Público: rotas que não precisam de login
     PUBLIC_ROUTES = ["/login", "/recuperar-senha", "/certificados/"]
@@ -29,16 +30,19 @@ def main(page: ft.Page):
         # Verificar se o usuário está logado para rotas protegidas
         rota_publica = any(page.route == r or page.route.startswith(r) for r in PUBLIC_ROUTES)
         if not rota_publica:
-            try:
-                sessao = page.cliente.auth.get_session()
-                if not sessao:
-                    print(f"[AUTH] Usuário não logado. Redirecionando de {page.route} para /login")
+            if page.auth_user is None:
+                try:
+                    sessao = page.cliente.auth.get_session()
+                    if sessao:
+                        page.auth_user = sessao.user
+                    else:
+                        print(f"[AUTH] Usuário não logado. Redirecionando de {page.route} para /login")
+                        page.go("/login")
+                        return
+                except Exception as e:
+                    print(f"[AUTH] Erro ao verificar sessão: {e}")
                     page.go("/login")
                     return
-            except Exception as e:
-                print(f"[AUTH] Erro ao verificar sessão: {e}")
-                page.go("/login")
-                return
 
         try:
             page.clean()
@@ -101,6 +105,7 @@ def main(page: ft.Page):
                 page.cliente.auth.set_session(access_token, refresh_token)
                 sessao = page.cliente.auth.get_session()
                 if sessao:
+                    page.auth_user = sessao.user
                     print("[AUTH] Sessão restaurada do client_storage")
                     return True
         except Exception as e:

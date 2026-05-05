@@ -128,7 +128,10 @@ class estruturaDeCampos():
         campo = ft.Text(metainformacao['rotulo'], width=largura[0], weight="bold")
         
         # Recuperar valor do avançar_dados INDEPENDENTE de ser Dropdown ou TextField
-        valor_inicial = valor_inicial or self.page.avancar_dados.get(chave, '')
+        valor_avancar = self.page.avancar_dados.get(chave, '')
+        if valor_avancar and not valor_inicial:
+            valor_inicial = valor_avancar
+            self.resposta['dados_fixos'][chave] = valor_avancar
 
         if len(opcoes) > 0:
             opcoes_lista = []
