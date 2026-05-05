@@ -20,6 +20,11 @@ def main(page: ft.Page):
 
     def route_change(route):
         import traceback
+
+        # Rota raiz redireciona para o dashboard (auth check cuida do resto)
+        if page.route == "/" or page.route == "":
+            page.go("/dashboard")
+            return
         
         # Verificar se o usuário está logado para rotas protegidas
         rota_publica = any(page.route == r or page.route.startswith(r) for r in PUBLIC_ROUTES)
@@ -86,13 +91,36 @@ def main(page: ft.Page):
             page.update()
 
     page.on_route_change = route_change
-    
+
+    # Tenta restaurar sessão salva no navegador (equivalente a cookies)
+    def restaurar_sessao():
+        try:
+            access_token = page.client_storage.get("sb_access_token")
+            refresh_token = page.client_storage.get("sb_refresh_token")
+            if access_token and refresh_token:
+                page.cliente.auth.set_session(access_token, refresh_token)
+                sessao = page.cliente.auth.get_session()
+                if sessao:
+                    print("[AUTH] Sessão restaurada do client_storage")
+                    return True
+        except Exception as e:
+            print(f"[AUTH] Falha ao restaurar sessão: {e}")
+            try:
+                page.client_storage.remove("sb_access_token")
+                page.client_storage.remove("sb_refresh_token")
+            except Exception:
+                pass
+        return False
+
     # Lógica de entrada inicial
     if page.route == "/" or page.route == "" or page.route is None:
-        page.go("/dashboard")
+        if restaurar_sessao():
+            page.go("/dashboard")
+        else:
+            page.go("/login")
     else:
-        # Se veio com uma rota específica na URL (ex: /dashboard ou /recuperar-senha)
-        # chamamos o route_change manualmente para processar a página atual
+        # Se veio com uma rota específica na URL, tenta restaurar sessão antes
+        restaurar_sessao()
         page.on_route_change(page.route)
 
 
