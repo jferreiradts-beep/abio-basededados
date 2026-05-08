@@ -19,6 +19,7 @@ class obterDados:
         self.cliente = cliente
         self.escopo_id = escopo_id
         self.capa = self.obter_dados_capa()
+        self.validar_dados_capa()
         self.produtos = self.obter_produtos()
         self.linha_associados = self.obter_associados_por_escopo() 
         
@@ -26,13 +27,42 @@ class obterDados:
         resposta = self.cliente.rpc('obter_dados_escopo', {'p_escopo_id': self.escopo_id}).execute()
         return resposta.data
 
+    def validar_dados_capa(self):
+        if not self.capa:
+            raise ValueError("Não foi possível obter os dados do escopo.")
+        
+        campos_obrigatorios = {
+            'matricula': 'Matrícula',
+            'unidade_producao': 'Unidade de Produção',
+            'endereco': 'Endereço',
+            'municipio': 'Município',
+            'estado': 'Estado',
+            'tipo_certificado': 'Tipo de Certificado',
+            'data_emissao': 'Data de Emissão'
+        }
+        
+        faltando = []
+        for chave, nome in campos_obrigatorios.items():
+            if not self.capa.get(chave):
+                faltando.append(nome)
+                
+        if faltando:
+            raise ValueError(f"Faltam dados obrigatórios para gerar o documento: {', '.join(faltando)}")
+
     def obter_produtos(self):
         resposta = self.cliente.rpc('obter_produtos', {'p_escopo_id': self.escopo_id}).execute()
-        return resposta.data[next(iter(resposta.data))]
+        if not resposta.data:
+            raise ValueError("Faltam dados obrigatórios para gerar o documento: Produtos")
+        try:
+            return resposta.data[next(iter(resposta.data))]
+        except StopIteration:
+            raise ValueError("Faltam dados obrigatórios para gerar o documento: Produtos")
 
     def obter_associados_por_escopo(self):
-        resposta = self.capa['associados']
-        
+        resposta = self.capa.get('associados')
+        if not resposta:
+            raise ValueError("Faltam dados obrigatórios para gerar o documento: Associados")
+            
         # Se nenhum associado estiver vinculado, mostrar todos
         self.associados_vinculados = [v for v in resposta if v.get('vinculo', False)]
         if len(self.associados_vinculados) == 0:
@@ -40,7 +70,7 @@ class obterDados:
 
         texto = []
         for associado in self.associados_vinculados:
-            texto.append(f"{associado['nome']} - {formatar_cpf_cnpj(associado['cpf'])}")
+            texto.append(f"{associado.get('nome') or ''} - {formatar_cpf_cnpj(associado.get('cpf') or '')}")
 
         return ', '.join(texto)
 
@@ -380,19 +410,19 @@ class montarFichaGrupos():
         estilo_celula.leading = 12
         
         # Cabeçalho
-        elementos.append(Paragraph(f"<b>Grupo:</b> {self.dados_gerais.get('nome', '')}", estilo_titulo))
-        elementos.append(Paragraph(f"<b>Núcleo:</b> {self.dados_gerais.get('nucleo', '')}   |   <b>Coordenador:</b> {self.dados_gerais.get('coordenador', '')}", estilo_normal))
+        elementos.append(Paragraph(f"<b>Grupo:</b> {self.dados_gerais.get('nome') or ''}", estilo_titulo))
+        elementos.append(Paragraph(f"<b>Núcleo:</b> {self.dados_gerais.get('nucleo') or ''}   |   <b>Coordenador:</b> {self.dados_gerais.get('coordenador') or ''}", estilo_normal))
         elementos.append(Spacer(1, 20))
         
         # Tabela
         dados_tabela_pdf = [['Matrícula', 'Primeiro Associado', 'Escopo', 'Validade', 'Últ. Movimento', 'Observações']]
         
         for item in self.dados_tabela:
-            validade = item.get('validade', '')
+            validade = item.get('validade') or ''
             if validade:
                 validade = datetime.strptime(validade, '%Y-%m-%d').strftime('%d/%m/%Y')
             
-            ultimo_movimento = item.get('ultimo_movimento', '')
+            ultimo_movimento = item.get('ultimo_movimento') or ''
             if ultimo_movimento:
                 # O último movimento costuma vir no formato DD/MM/AAAA ou YYYY-MM-DD dependendo do BD. Se falhar o parse, usa o texto puro.
                 try:
@@ -402,11 +432,11 @@ class montarFichaGrupos():
                     pass
 
             linha = [
-                item.get('matricula', ''),
-                Paragraph(item.get('primeiro_associado', ''), estilo_celula),
-                Paragraph(item.get('escopo', ''), estilo_celula),
-                validade,
-                Paragraph(ultimo_movimento, estilo_celula),
+                str(item.get('matricula') or ''),
+                Paragraph(str(item.get('primeiro_associado') or ''), estilo_celula),
+                Paragraph(str(item.get('escopo') or ''), estilo_celula),
+                str(validade or ''),
+                Paragraph(str(ultimo_movimento or ''), estilo_celula),
                 '' # Observações em branco
             ]
             dados_tabela_pdf.append(linha)

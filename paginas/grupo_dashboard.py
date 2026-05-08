@@ -152,11 +152,15 @@ class linhaBotoes():
             self.page.go('/formulario')
 
         elif acao == 'imprimir':
-            from gerar_certificado import montarFichaGrupos
-            if self.pai:
-                ficha = montarFichaGrupos(self.page.cliente, self.pai.dados['dados_gerais'], self.pai.dados_tabela.dados)
-                url_pdf = ficha.imprimir_ficha(self.page.session.get("id"))
-                self.page.launch_url(url=url_pdf, web_window_name="_blank")
+            try:
+                from gerar_certificado import montarFichaGrupos
+                if self.pai:
+                    ficha = montarFichaGrupos(self.page.cliente, self.pai.dados['dados_gerais'], self.pai.dados_tabela.dados)
+                    url_pdf = ficha.imprimir_ficha(self.page.session.get("id"))
+                    self.page.launch_url(url=url_pdf, web_window_name="_blank")
+            except Exception as e:
+                from escudo_supabase import aviso
+                aviso(self.page, f"Erro ao gerar a ficha de grupos: {str(e)}")
 
         elif acao == 'voltar':
             retorno = self.page.voltar_dados['endereco'][-1] if self.page.voltar_dados['endereco'] else '/dashboard'
