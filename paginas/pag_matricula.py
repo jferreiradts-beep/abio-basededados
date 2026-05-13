@@ -96,7 +96,7 @@ class janelaNovoAssociado:
             }).execute()
 
         self.page.session.set("tipo", "associado")
-        self.page.session.set('id', resposta.data[0]['id'])
+        self.page.session.set('id', resposta.data)
         self.page.go('/formulario')
 
     def cancelar(self):
