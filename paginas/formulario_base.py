@@ -95,11 +95,16 @@ class botoesFormulario():
         self.tipo = self.page.session.get('tipo')
         resposta = self.cliente.rpc('salvar_formulario', {'p_tabela': self.tipo, 'p_dados': self.resposta}).execute()
         
-        if resposta:
-            self.page.session.set('id', resposta.data['id'])
+        if resposta and resposta.data.get('status') == 'success':
+            novo_id = resposta.data['id']
+            self.page.session.set('id', novo_id)
+            # Actualizar o id no dicionário local para que salvamentos
+            # subsequentes façam UPDATE em vez de novo INSERT
+            self.resposta['dados_fixos']['id'] = novo_id
             aviso(self.page, "Formulário salvo com sucesso!")
         else:
-            aviso(self.page, "Erro ao salvar formulário!")
+            mensagem = resposta.data.get('message', 'Erro desconhecido') if resposta else 'Sem resposta'
+            aviso(self.page, f"Erro ao salvar formulário: {mensagem}")
 
 
 class estruturaDeCampos():

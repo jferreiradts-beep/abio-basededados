@@ -54,8 +54,9 @@ class Eliminar:
         self.page.update()
 
 class janelaNovoAssociado:
-    def __init__(self, page):
+    def __init__(self, page, coluna_matricula=None):
         self.page = page
+        self.coluna_matricula = coluna_matricula
         self.exibir_janela()
         
     def montar_janela(self):
@@ -95,6 +96,15 @@ class janelaNovoAssociado:
             'p_matricula': self.page.session.get('id')
             }).execute()
 
+        # Fechar a janela
+        self.janela_novo_associado.open = False
+        self.page.update()
+
+        # Atualizar voltar_dados como faz ir_para_formulario
+        matricula_id = self.page.session.get('id')
+        self.page.voltar_dados['endereco'].append('/matricula')
+        self.page.voltar_dados['dados_pagina'].append({'id': matricula_id})
+
         self.page.session.set("tipo", "associado")
         self.page.session.set('id', resposta.data)
         self.page.go('/formulario')
@@ -117,7 +127,7 @@ class botoesColMatricula:
         )
 
     def novo_associado(self):
-        janelaNovoAssociado(self.page)
+        janelaNovoAssociado(self.page, self.ir_para_formulario)
 
     def novo_escopo(self):
         self.page.avancar_dados['matricula'] = self.page.session.get('id')
