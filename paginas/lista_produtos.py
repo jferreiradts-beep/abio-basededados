@@ -129,12 +129,13 @@ class DialogoEditarControle():
         self.janela.update()
 
 class janelaNovoProduto():
-    def __init__(self, page, opcoes_grupos, atualizar_painel, tipo= 'produto'):
+    def __init__(self, page, opcoes_grupos, atualizar_painel, ids_selecionados=None, tipo= 'produto'):
         self.page = page
         self.cliente = page.cliente
         self.tipo = tipo
         self.opcoes_grupos = opcoes_grupos
         self.atualizar_painel = atualizar_painel
+        self.ids_selecionados = ids_selecionados
 
     def salvar(self, e):
         if self.tipo == 'produto':
@@ -146,9 +147,14 @@ class janelaNovoProduto():
 
         try:
             resposta = self.cliente.table(tabela).insert(dados).execute()
+
+            # Marca o novo produto como selecionado na lista local
+            if self.tipo == 'produto' and resposta.data and self.ids_selecionados is not None:
+                novo_id = resposta.data[0]['id']
+                self.ids_selecionados.add(novo_id)
+
             self.cancelar(e)
             self.atualizar_painel()
-            print(resposta)
         except Exception as error:
             aviso(self.page, f"Erro ao salvar: {error}")
 
@@ -229,6 +235,15 @@ class painelProdutos():
         self.dados = dados
 
         self.produtos_selecionados = []
+
+        # Cópia local dos IDs selecionados — fonte de verdade única.
+        # Inicializada a partir do 'incluso' do banco na primeira carga.
+        self.ids_selecionados = set()
+        for grupo in self.dados.lista_produtos:
+            for produto in grupo['produtos']:
+                if produto['incluso']:
+                    self.ids_selecionados.add(produto['id'])
+
         # Inicialmente vazio ou loading
         self.lista_produtos = ft.Column([], scroll=ft.ScrollMode.ADAPTIVE, expand=True)
 
@@ -244,17 +259,8 @@ class painelProdutos():
         self.dialogo_editar.abrir_janela()
 
     def verificar_produtos_selecionados(self):
-        # Produtos de grupos já abertos: usa o valor atual dos checkboxes
-        ids_renderizados = {ckb.data['id'] for ckb in self.produtos_selecionados}
-        selecionados = {ckb.data['id'] for ckb in self.produtos_selecionados if ckb.value}
-
-        # Produtos de grupos nunca abertos (lazy): preserva o valor original de incluso
-        for grupo in self.dados.lista_produtos:
-            for produto in grupo['produtos']:
-                if produto['id'] not in ids_renderizados and produto['incluso']:
-                    selecionados.add(produto['id'])
-
-        return list(selecionados)
+        """Retorna a lista de IDs selecionados a partir da cópia local."""
+        return list(self.ids_selecionados)
 
     def _montar_linhas_produtos(self, grupo_produtos, on_marcar_produto, on_editar_produto):
         """Constrói as linhas de 4 colunas de produtos para um grupo."""
@@ -265,14 +271,16 @@ class painelProdutos():
                 linhas.append(linha)
                 linha = ft.Row([])
 
+            marcado = produto['id'] in self.ids_selecionados
+
             txt_produto = ft.Text(
                 produto['nome'],
                 width=200,
                 size=14,
-                weight=ft.FontWeight.BOLD if produto['incluso'] else ft.FontWeight.NORMAL,
+                weight=ft.FontWeight.BOLD if marcado else ft.FontWeight.NORMAL,
             )
             ckb_produto = ft.Checkbox(
-                value=produto['incluso'],
+                value=marcado,
                 width=20,
                 data={"id": produto["id"], "txt": txt_produto},
                 on_change=on_marcar_produto,
@@ -308,25 +316,31 @@ class painelProdutos():
         grupo_aberto_ref = {"secao": None, "gp": None}  # grupo actualmente aberto
 
         def _flush_e_evictar(gp, secao):
-            """Persiste o estado dos checkboxes → dados e liberta os widgets do grupo."""
+            """Persiste o estado dos checkboxes → ids_selecionados e liberta os widgets do grupo."""
             ids_grupo = {p['id'] for p in gp}
             restantes = []
             for ckb in self.produtos_selecionados:
                 if ckb.data['id'] in ids_grupo:
-                    # Actualiza incluso no dict original (sorted() partilha referências)
-                    for p in gp:
-                        if p['id'] == ckb.data['id']:
-                            p['incluso'] = ckb.value
-                            break
+                    # Actualiza a cópia local de seleções
+                    if ckb.value:
+                        self.ids_selecionados.add(ckb.data['id'])
+                    else:
+                        self.ids_selecionados.discard(ckb.data['id'])
                 else:
                     restantes.append(ckb)
             self.produtos_selecionados = restantes
             secao.controls = []  # liberta widgets da memória
 
         def on_marcar_produto(e):
+            produto_id = e.control.data["id"]
             txt = e.control.data["txt"]
             txt.weight = ft.FontWeight.BOLD if e.control.value else ft.FontWeight.NORMAL
             txt.update()
+            # Atualiza a cópia local de seleções
+            if e.control.value:
+                self.ids_selecionados.add(produto_id)
+            else:
+                self.ids_selecionados.discard(produto_id)
 
         def on_editar_produto(e):
             data = e.control.data
@@ -425,11 +439,18 @@ class painelProdutos():
             self.lista_produtos.update()
 
     def atualizar_painel(self):
+        # Sincroniza checkboxes abertos → ids_selecionados antes de destruir os widgets
+        for ckb in self.produtos_selecionados:
+            if ckb.value:
+                self.ids_selecionados.add(ckb.data['id'])
+            else:
+                self.ids_selecionados.discard(ckb.data['id'])
+
         self.dados.atualizar_dados()
         self.lista_produtos.controls.clear()
         self.produtos_selecionados = []
 
-        # Recarrega
+        # Recarrega — usará ids_selecionados que sobreviveu ao refresh
         self.carregar_conteudo_lazy()
 
 
@@ -446,15 +467,19 @@ class painelProdutos():
         )
 
 class linhaBotoes():
-    def __init__(self, page, dados, verificar_selecionados, atualizar_painel):
+    def __init__(self, page, dados, verificar_selecionados, atualizar_painel, ids_selecionados):
         self.page = page
         self.dados = dados
         self.verificar_selecionados = verificar_selecionados
         self.atualizar_painel = atualizar_painel
+        self.ids_selecionados = ids_selecionados
         self.montar_linha_botoes()
 
     def novo_produto(self, opcoes_grupos):
-        self.janela_novo_produto = janelaNovoProduto(self.page, opcoes_grupos, self.atualizar_painel)
+        self.janela_novo_produto = janelaNovoProduto(
+            self.page, opcoes_grupos, self.atualizar_painel,
+            ids_selecionados=self.ids_selecionados
+        )
         self.janela_novo_produto.abrir_janela()
 
     def novo_grupo(self, e):
@@ -530,7 +555,12 @@ class baseProdutos():
         # 2️⃣ Painel de produtos
         self.escopo_descricao = metainformacaoEscopo(self.page, self.dados)
         self.painel_produtos = painelProdutos(self.page, self.dados)
-        self.linha_botoes = linhaBotoes(self.page, self.dados, self.painel_produtos.verificar_produtos_selecionados, self.painel_produtos.atualizar_painel)
+        self.linha_botoes = linhaBotoes(
+            self.page, self.dados,
+            self.painel_produtos.verificar_produtos_selecionados,
+            self.painel_produtos.atualizar_painel,
+            self.painel_produtos.ids_selecionados
+        )
         
         # 3️⃣ Layout principal
         layout = ft.Row([
