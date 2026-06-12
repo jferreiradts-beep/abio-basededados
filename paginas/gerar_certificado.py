@@ -161,9 +161,7 @@ class montarCertificado():
         
         endereco = f"{self.dados.capa['endereco']} - {self.dados.capa['municipio']} - {self.dados.capa['estado']}"
         linha = CaixaTexto(endereco, 700, fonte='Times-Bold').fazer_caixa(can, 60, linha-10, 'centro')
-
-        mensagem = f"A ABIO - ASSOCIAÇÃO DE AGRICULTORES BIOLÓGICOS DO ESTADO DO RIO DE JANEIRO - CERTIFICA O(S) PRODUTOR(ES) ACIMA NO ESCOPO DE {self.dados.capa['tipo_certificado'].upper()}, DE ACORDO COM A LEI 10.831 DE 23 DE DEZEMBRO DE 2003, COM O DECRETO 6.323 DE 27 DE DEZEMBRO DE 2007 E COM A PORTARIA 52 DE 15 DE MARÇO DE 2021, CONFORME A LISTAGEM NO VERSO."
-        linha = CaixaTexto(mensagem, 700, fonte='Times-Bold', pontos=14).fazer_caixa(can, 60, linha-20, 'justificado')
+        linha = CaixaTexto(self.dados.capa['mensagem'], 700, fonte='Times-Bold', pontos=14).fazer_caixa(can, 60, linha-20, 'justificado')
 
         emissao = datetime.strptime(self.dados.capa['data_emissao'], '%Y-%m-%d')
         CaixaTexto(f"Data de Emissão: {emissao.strftime('%d/%m/%Y')}", 700, fonte='Times-Bold', pontos=14).fazer_caixa(can, 60, 80, 'esquerda')
@@ -179,15 +177,10 @@ class montarCertificado():
         validade = datetime.strptime(self.dados.capa['data_emissao'], '%Y-%m-%d') + relativedelta(years=1) - timedelta(days=1)
         linha = CaixaTexto(f"Validade: {validade.strftime('%d/%m/%Y')}", 700, pontos=10).fazer_caixa(can, 60, linha, 'esquerda')
 
-        # Dados à direita: produtores
-        linha = 520
-        caixas_produtores = [CaixaTexto(f"Produtor(es):", 700, fonte='Times-Bold', pontos=10)]
-        for produtor in self.dados.associados_vinculados:
-            caixas_produtores.append(CaixaTexto(produtor['nome'], 700, pontos=10))
-
-        posicao = 60 + 700 - max(caixa.largura_texto for caixa in caixas_produtores)
-        for caixa in caixas_produtores:
-            linha = caixa.fazer_caixa(can, posicao, linha, 'esquerda')        
+        # Dados à direita: id
+        ano_emissao = self.dados.capa['data_emissao'][:4]
+        certificado_id = f"{ano_emissao}{self.escopo_id:05d}"
+        linha = CaixaTexto(f"ID: {certificado_id}", 700, pontos=10).fazer_caixa(can, 60, 520, 'direita')       
 
     def criar_canvas_completo(self):
         buffer = BytesIO()
@@ -485,6 +478,6 @@ class montarFichaGrupos():
 
 if __name__ == "__main__":
     cliente = login_supabase()
-    # montarCertificado(cliente, 66).imprimir_certificado()
-    montarFRI(cliente, 111).imprimir_fri()
+    montarCertificado(cliente, 66).imprimir_certificado()
+    # montarFRI(cliente, 111).imprimir_fri()
     
