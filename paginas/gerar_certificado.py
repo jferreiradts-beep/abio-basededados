@@ -151,6 +151,15 @@ class montarCertificado():
         self.nome_assinante = nome_assinante
         self.cargo_assinante = cargo_assinante
         self.dados = obterDados(self.cliente, self.escopo_id)
+        self.nome_arquivo = self._montar_nome_arquivo()
+
+    def _montar_nome_arquivo(self):
+        matricula = self.dados.capa.get('matricula', '')
+        primeiro_associado = ''
+        if self.dados.associados_vinculados:
+            primeiro_associado = self.dados.associados_vinculados[0].get('nome', '')
+        sigla = self.dados.capa.get('tipo_abreviatura', '')
+        return f"{matricula}_ {primeiro_associado}_ {sigla}.pdf"
     
     def criar_canvas_capa(self, can):
         linha = CaixaTexto(self.dados.linha_associados, 700).fazer_caixa(can, 60, 380, 'centro')
@@ -244,6 +253,15 @@ class montarFRI():
         self.cliente = cliente
         self.escopo_id = escopo_id
         self.dados = obterDados(self.cliente, self.escopo_id)
+        self.nome_arquivo = self._montar_nome_arquivo()
+
+    def _montar_nome_arquivo(self):
+        matricula = self.dados.capa.get('matricula', '')
+        primeiro_associado = ''
+        if self.dados.associados_vinculados:
+            primeiro_associado = self.dados.associados_vinculados[0].get('nome', '')
+        sigla = self.dados.capa.get('tipo_abreviatura', '')
+        return f"fri_{matricula}_ {primeiro_associado}_ {sigla}.pdf"
 
     def montar_cabecalho(self, can):
         linha = CaixaTexto(self.dados.capa['unidade_producao'], 410, fonte='Times-Bold').fazer_caixa(can, 130, 750, 'centro')

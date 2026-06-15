@@ -514,11 +514,11 @@ class imprimirEscopo():
                 
                 certificado = montarCertificado(self.page.cliente, self.page.session.get('id'), nome_assinante, cargo_assinante)
                 buffer_pdf = certificado.gerar_certificado()
-                nome_arquivo = f"certificado_{self.page.session.get('id')}_{int(time.time())}.pdf"
             else:
                 certificado = montarFRI(self.page.cliente, self.page.session.get('id'))
                 buffer_pdf = certificado.gerar_fri()
-                nome_arquivo = f"fri_{self.page.session.get('id')}_{int(time.time())}.pdf"
+
+            nome_arquivo = certificado.nome_arquivo
             
             # Diretório temporário na pasta assets (resolvido a partir deste script)
             caminho_dir = os.path.join(os.path.dirname(__file__), 'assets', 'certificados')
