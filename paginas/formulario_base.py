@@ -319,19 +319,19 @@ class dadosFormulario():
             escopo_id = self.page.cliente.table('escopo').select('id').eq('uprod_id', f"{self.id}").execute()
             escopo_id = escopo_id.data[0]['id']
 
-            cabecalho = self.page.cliente.table('vw_dados_com_associado').select('*').eq('id_escopo', f"e{escopo_id}").execute()
+            cabecalho = self.page.cliente.table('vw_dados_com_associado').select('*').eq('id_escopo', escopo_id).execute()
             cabecalho = cabecalho.data[0]
             cabecalho = f"SPG ABIO - {cabecalho['nucleo']} - {cabecalho['grupo']} - {cabecalho['matricula']}"
             return cabecalho
 
         elif self.tipo == 'grupo':
-            cabecalho = self.page.cliente.table('vw_dados_com_associado').select('*').eq('id_grupo', f"g{self.id}").execute()
+            cabecalho = self.page.cliente.table('vw_dados_com_associado').select('*').eq('id_grupo', self.id).execute()
             cabecalho = cabecalho.data[0]
             cabecalho = f"SPG ABIO - {cabecalho['nucleo']}"
             return cabecalho
 
         elif self.tipo == 'escopo':
-            cabecalho = self.page.cliente.table('vw_dados_com_associado').select('*').eq('id_escopo', f"e{self.id}").execute()
+            cabecalho = self.page.cliente.table('vw_dados_com_associado').select('*').eq('id_escopo', self.id).execute()
             cabecalho = cabecalho.data[0]
             cabecalho = f"SPG ABIO - {cabecalho['nucleo']} - {cabecalho['grupo']} - {cabecalho['matricula']}"
             return cabecalho

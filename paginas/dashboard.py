@@ -322,7 +322,7 @@ class colunaIndividual:
             self.page.session.set('tipo', 'nucleo')
         elif self.nome == 'Grupos':
             self.page.session.set('tipo', 'grupo')
-            self.page.avancar_dados['nucleo_id'] = self.filtro['Núcleos']['id'][1:]
+            self.page.avancar_dados['nucleo_id'] = self.filtro['Núcleos']['id']
         elif self.nome == 'Escopos':
             self.page.session.set('tipo', 'escopo')
             self.page.avancar_dados['matricula'] = self.filtro['Matriculas']['id']
@@ -336,14 +336,14 @@ class colunaIndividual:
                 
         if self.nome == 'Matriculas':
             if id_selecionado == '0':
-                janelaNovaMatricula(self.page, self.filtro['Grupos']['id'][1:])
+                janelaNovaMatricula(self.page, self.filtro['Grupos']['id'])
             else:
                 self.page.session.set('id', id_selecionado)
                 self.page.go('/matricula')
         
         else:
             # Tratamento especial para novo (id = 0)
-            id_final = id_selecionado[1:] if id_selecionado != '0' else id_selecionado
+            id_final = str(int(id_selecionado)) if id_selecionado != '0' else '0'
             self.page.session.set('id', id_final)
             
             # Exceção do painel grupo
@@ -407,7 +407,7 @@ class colunasDashboard:
         self.filtro = self.page.session.get('dashboard_filtro')
         if self.filtro is None:
             self.filtro = {
-                'Núcleos': {'valor': 1, 'id': 0},
+                'Núcleos': {'valor': 'all', 'id': 0},
                 'Grupos': {'valor': 0, 'id': 0},
                 'Matriculas': {'valor': 0, 'id': 0},
                 'Escopos': {'valor': 0, 'id': 0}
@@ -430,7 +430,7 @@ class colunasDashboard:
                 coluna.botao_novo.disabled = False
 
     def limpar_filtro(self, e):
-        self.filtro ['Núcleos'] = {'valor': 1, 'id': 0}
+        self.filtro ['Núcleos'] = {'valor': 'all', 'id': 0}
         self.filtro ['Grupos'] = {'valor': 0, 'id': 0}
         self.filtro ['Matriculas'] = {'valor': 0, 'id': 0}
         self.filtro ['Escopos'] = {'valor': 0, 'id': 0}
@@ -475,23 +475,23 @@ class dadosDashboard:
             coluna = 'escopo'
         return coluna
 
-    def criar_filtro(self, valor_filtro):
-        if valor_filtro == 1:
-            filtro = pd.Series([True] * len(self.dados))
+    def criar_filtro(self, nome, valor_filtro):
+        if valor_filtro == 'all':
+            return pd.Series([True] * len(self.dados))
         elif valor_filtro == 0:
-            filtro = pd.Series([False] * len(self.dados))
-        elif valor_filtro[0] == 'n':
-            filtro = self.dados['id_nucleo'] == valor_filtro
-        elif valor_filtro[0] == 'g':
-            filtro = self.dados['id_grupo'] == valor_filtro
-        elif valor_filtro[0] == 'e':
-            filtro = self.dados['id_escopo'] == valor_filtro
-        elif valor_filtro[2] == '-':
-            filtro = self.dados['matricula'] == valor_filtro
-        else:
-            filtro = None
+            return pd.Series([False] * len(self.dados))
 
-        return filtro
+        # Cada coluna é filtrada pelo ID do seu pai na hierarquia:
+        # Grupos → filtrado por id_nucleo, Matriculas → por id_grupo, Escopos → por matricula
+        mapa_coluna_filtro = {
+            'Grupos':     'id_nucleo',
+            'Matriculas': 'id_grupo',
+            'Escopos':    'matricula'
+        }
+        coluna_filtro = mapa_coluna_filtro.get(nome)
+        if coluna_filtro:
+            return self.dados[coluna_filtro] == valor_filtro
+        return None
 
     def dados_cardGrid(self, dados_filtrados, ass_filtrados):
 
@@ -529,7 +529,8 @@ class dadosDashboard:
         else:
             dados = dados_filtrados[[f'id_{coluna}', coluna]].copy()
             dados = dados.drop_duplicates().sort_values(by=coluna)
-            idx = dados[f'id_{coluna}'].to_list()
+            # Converter para int Python puro (pandas usa float64 quando há NULLs)
+            idx = [int(x) for x in dados[f'id_{coluna}']]
             linhas = dados[coluna].to_list()
 
         return zip(idx, linhas)
@@ -537,7 +538,7 @@ class dadosDashboard:
     def filtrar_dados(self, nome, valor_filtro):
         # Definir coluna e criar filtro
         coluna = self.definir_coluna(nome)
-        filtro = self.criar_filtro(valor_filtro)
+        filtro = self.criar_filtro(nome, valor_filtro)
 
         # Filtrar dados
         dados_filtrados = self.dados.loc[filtro].copy()
