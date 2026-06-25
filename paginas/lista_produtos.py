@@ -523,7 +523,8 @@ class dadosProdutos():
         self.page = page
         self.cliente = page.cliente
         self.tipo_escopo = page.session.get("tipo_escopo")
-        self.id_escopo = page.session.get("id")
+        _id_raw = page.session.get("id")
+        self.id_escopo = int(_id_raw) if _id_raw not in (None, '0', 0) else _id_raw
 
         self.atualizar_dados()
         

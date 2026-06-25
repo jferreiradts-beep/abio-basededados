@@ -276,9 +276,9 @@ class colunaIndividual:
         self.criar_botao_novo()
 
     def definir_largura(self):
-        if self.nome == 'Matriculas':
+        if self.nome == 'matricula':
             return 370
-        elif self.nome == 'Escopos':
+        elif self.nome == 'escopo':
             return 170
         else:
             return 270
@@ -318,39 +318,37 @@ class colunaIndividual:
         )
 
     def ir_para_formulario(self, id_selecionado):
-        if self.nome == 'Núcleos':
-            self.page.session.set('tipo', 'nucleo')
-        elif self.nome == 'Grupos':
-            self.page.session.set('tipo', 'grupo')
-            self.page.avancar_dados['nucleo_id'] = self.filtro['Núcleos']['id']
-        elif self.nome == 'Escopos':
-            self.page.session.set('tipo', 'escopo')
-            self.page.avancar_dados['matricula'] = self.filtro['Matriculas']['id']
-        elif self.nome == 'Matriculas':
-            pass
-        else:
-            return
-
-        self.page.voltar_dados['endereco'].append(self.page.route)
-        self.page.voltar_dados['dados_pagina'].append({'dashboard_filtro': self.filtro})
-                
-        if self.nome == 'Matriculas':
+        # 'matricula' tem navegação própria — tratar primeiro e retornar
+        if self.nome == 'matricula':
+            self.page.voltar_dados['endereco'].append(self.page.route)
+            self.page.voltar_dados['dados_pagina'].append({'dashboard_filtro': self.filtro})
             if id_selecionado == '0':
-                janelaNovaMatricula(self.page, self.filtro['Grupos']['id'])
+                janelaNovaMatricula(self.page, self.filtro['grupo']['id'])
             else:
                 self.page.session.set('id', id_selecionado)
                 self.page.go('/matricula')
-        
+            return
+
+        # Para nucleo, grupo e escopo: tipo = nome
+        self.page.session.set('tipo', self.nome)
+
+        # Dados extras que cada painel precisa passar para o formulário
+        avancar_extras = {
+            'grupo':  {'nucleo_id': self.filtro['nucleo']['id']},
+            'escopo': {'matricula': self.filtro['matricula']['id']},
+        }
+        self.page.avancar_dados.update(avancar_extras.get(self.nome, {}))
+
+        self.page.voltar_dados['endereco'].append(self.page.route)
+        self.page.voltar_dados['dados_pagina'].append({'dashboard_filtro': self.filtro})
+
+        id_final = str(int(id_selecionado)) if id_selecionado != '0' else '0'
+        self.page.session.set('id', id_final)
+
+        if self.nome == 'grupo' and id_final != '0':
+            self.page.go('/painel_grupo')
         else:
-            # Tratamento especial para novo (id = 0)
-            id_final = str(int(id_selecionado)) if id_selecionado != '0' else '0'
-            self.page.session.set('id', id_final)
-            
-            # Exceção do painel grupo
-            if self.nome == 'Grupos' and id_final != '0':
-                self.page.go('/painel_grupo')
-            else:
-                self.page.go('/formulario')
+            self.page.go('/formulario')
 
     def selecionar(self, id_selecionado):
         self.filtro[self.nome]['id'] = id_selecionado
@@ -377,7 +375,7 @@ class colunaIndividual:
 
         # Chamar a produção de dados para produzir o card grid
         # no caso de escopos
-        if self.nome == 'Escopos':
+        if self.nome == 'escopo':
             self.dados.filtrar_dados(self.nome, id_selecionado)
 
     def montar_coluna(self):
@@ -388,7 +386,7 @@ class colunaIndividual:
             border_radius=10,
             padding=10,
             content=ft.Column([
-                    ft.Text(self.nome, size=16, weight="bold"),
+                    ft.Text(dadosDashboard.MAPA_LABEL.get(self.nome, self.nome), size=16, weight="bold"),
                     self.lista,
                     ft.Container(self.botao_novo, alignment=ft.alignment.center)],
                 alignment=ft.MainAxisAlignment.START,
@@ -407,20 +405,20 @@ class colunasDashboard:
         self.filtro = self.page.session.get('dashboard_filtro')
         if self.filtro is None:
             self.filtro = {
-                'Núcleos': {'valor': 'all', 'id': 0},
-                'Grupos': {'valor': 0, 'id': 0},
-                'Matriculas': {'valor': 0, 'id': 0},
-                'Escopos': {'valor': 0, 'id': 0}
+                'nucleo':    {'valor': 'all', 'id': 0},
+                'grupo':     {'valor': 0, 'id': 0},
+                'matricula': {'valor': 0, 'id': 0},
+                'escopo':    {'valor': 0, 'id': 0}
             }
 
         self.colunas = [
-            colunaIndividual(self.page, self.dados, 'Núcleos', self.filtro),
-            colunaIndividual(self.page, self.dados, 'Grupos', self.filtro),
-            colunaIndividual(self.page, self.dados, 'Matriculas', self.filtro),
-            colunaIndividual(self.page, self.dados, 'Escopos', self.filtro) 
+            colunaIndividual(self.page, self.dados, 'nucleo',    self.filtro),
+            colunaIndividual(self.page, self.dados, 'grupo',     self.filtro),
+            colunaIndividual(self.page, self.dados, 'matricula', self.filtro),
+            colunaIndividual(self.page, self.dados, 'escopo',    self.filtro)
         ]
 
-        for i in range(len(self.colunas) -1):
+        for i in range(len(self.colunas) - 1):
             self.colunas[i].coluna_seguinte = self.colunas[i + 1]
 
         for coluna in self.colunas[1:]:
@@ -430,10 +428,10 @@ class colunasDashboard:
                 coluna.botao_novo.disabled = False
 
     def limpar_filtro(self, e):
-        self.filtro ['Núcleos'] = {'valor': 'all', 'id': 0}
-        self.filtro ['Grupos'] = {'valor': 0, 'id': 0}
-        self.filtro ['Matriculas'] = {'valor': 0, 'id': 0}
-        self.filtro ['Escopos'] = {'valor': 0, 'id': 0}
+        self.filtro['nucleo']    = {'valor': 'all', 'id': 0}
+        self.filtro['grupo']     = {'valor': 0, 'id': 0}
+        self.filtro['matricula'] = {'valor': 0, 'id': 0}
+        self.filtro['escopo']    = {'valor': 0, 'id': 0}
 
         self.colunas[0].selecionar(0)
 
@@ -446,6 +444,19 @@ class colunasDashboard:
 
 
 class dadosDashboard:
+    # Chaves internas = nomes das colunas da view (sem acento, sem maiúsculas)
+    MAPA_LABEL = {
+        'nucleo':    'Núcleos',
+        'grupo':     'Grupos',
+        'matricula': 'Matrículas',
+        'escopo':    'Escopos'
+    }
+    MAPA_COLUNA_FILTRO = {
+        'grupo':     'id_nucleo',
+        'matricula': 'id_grupo',
+        'escopo':    'matricula'
+    }
+
     def __init__(self, cliente, situacoes=None):
         if situacoes is None:
             situacoes = ['ativo', 'suspenso', 'cancelado']
@@ -465,15 +476,7 @@ class dadosDashboard:
 
 
     def definir_coluna(self, nome):
-        if nome == 'Núcleos':
-            coluna = 'nucleo'
-        elif nome == 'Grupos':
-            coluna = 'grupo'
-        elif nome == 'Matriculas':
-            coluna = 'matricula'
-        elif nome == 'Escopos':
-            coluna = 'escopo'
-        return coluna
+        return nome  # a chave interna é o próprio nome da coluna na view
 
     def criar_filtro(self, nome, valor_filtro):
         if valor_filtro == 'all':
@@ -483,12 +486,7 @@ class dadosDashboard:
 
         # Cada coluna é filtrada pelo ID do seu pai na hierarquia:
         # Grupos → filtrado por id_nucleo, Matriculas → por id_grupo, Escopos → por matricula
-        mapa_coluna_filtro = {
-            'Grupos':     'id_nucleo',
-            'Matriculas': 'id_grupo',
-            'Escopos':    'matricula'
-        }
-        coluna_filtro = mapa_coluna_filtro.get(nome)
+        coluna_filtro = self.MAPA_COLUNA_FILTRO.get(nome)
         if coluna_filtro:
             return self.dados[coluna_filtro] == valor_filtro
         return None

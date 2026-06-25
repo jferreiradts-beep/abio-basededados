@@ -57,7 +57,7 @@ class verAcontecimentos():
         self.exibir_janela_contecimentos()
 
     def obter_dados(self):
-        cabecalho = self.page.cliente.table('vw_dados_com_associado').select('*').eq('id_escopo', f"e{self.id}").execute()
+        cabecalho = self.page.cliente.table('vw_dados_com_associado').select('*').eq('id_escopo', int(self.id)).execute()
         dicionario_acontecimentos = self.page.cliente.table('tipo_acontecimento').select('*').execute()
         resposta = self.page.cliente.table('acontecimentos').select('*').eq('escopo_id', self.id).execute()
         return cabecalho.data, dicionario_acontecimentos.data, resposta.data
