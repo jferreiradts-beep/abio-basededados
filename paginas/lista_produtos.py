@@ -527,11 +527,11 @@ class dadosProdutos():
         self.id_escopo = int(_id_raw) if _id_raw not in (None, '0', 0) else _id_raw
 
         self.atualizar_dados()
-        
+
     def atualizar_dados(self):
         lista_produtos = self.cliente.rpc('fn_produtos_por_escopo', {
-            'p_tipo': self.tipo_escopo,
-            'p_escopo_id': self.id_escopo}).execute()
+            'p_tipo': int(self.tipo_escopo),
+            'p_escopo_id': int(self.id_escopo)}).execute()
         lista_produtos = lista_produtos.data
 
         self.escopo = lista_produtos['escopo']
