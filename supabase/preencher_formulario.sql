@@ -1,5 +1,7 @@
-CREATE OR REPLACE FUNCTION preencher_formulario(p_tabela text, p_registro int)
-RETURNS jsonb AS $$
+CREATE OR REPLACE FUNCTION public.preencher_formulario(p_tabela text, p_registro integer)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+AS $function$
 DECLARE
     dados_fixos jsonb;
     dados_ajustaveis jsonb;
@@ -86,4 +88,4 @@ BEGIN
         'opcoes', opcoes
     );
 END;
-$$ LANGUAGE plpgsql;
+$function$
