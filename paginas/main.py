@@ -3,7 +3,7 @@ from dashboard import DashboardBase
 from formulario_base import baseFormulario
 from pag_matricula import MatriculaBase
 from lista_produtos import baseProdutos
-from escudo_supabase import escudo_supabase, login_supabase, criar_cliente_supabase
+from escudo_supabase import criar_cliente_supabase  # login_supabase e escudo_supabase removidos
 from pag_login import LoginBase
 from pag_recuperar_senha import RecuperarSenhaBase
 from grupo_dashboard import grupoBase

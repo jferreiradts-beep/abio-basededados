@@ -10,7 +10,6 @@ from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
 import unicodedata
 
-from escudo_supabase import login_supabase
 from formatar_campos import formatar_cpf_cnpj
 
 
@@ -495,6 +494,7 @@ class montarFichaGrupos():
         return f"/certificados/{nome_arquivo}"
 
 if __name__ == "__main__":
+    from escudo_supabase import login_supabase
     cliente = login_supabase()
     montarCertificado(cliente, 66).imprimir_certificado()
     # montarFRI(cliente, 111).imprimir_fri()

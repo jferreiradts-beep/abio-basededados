@@ -1,6 +1,5 @@
 import flet as ft
 from formatar_campos import formatar_cpf_cnpj
-from escudo_supabase import login_supabase
 import re
 
 class Eliminar:
@@ -416,6 +415,7 @@ class MatriculaBase:
 
 def iniciar_matricula(matricula = '01-012'):
     def main(page: ft.Page):
+        from escudo_supabase import login_supabase
         page.cliente = login_supabase()
         page.session.set("id", matricula)
         MatriculaBase(page)

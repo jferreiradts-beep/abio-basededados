@@ -4,7 +4,7 @@ from escudo_supabase import aviso
 class LoginBase:
     def __init__(self, page: ft.Page):
         self.page = page
-        
+
         # Campos de entrada
         self.email = ft.TextField(label="Email", width=300)
         self.senha = ft.TextField(label="Senha", password=True, can_reveal_password=True, width=300)
@@ -62,6 +62,22 @@ class LoginBase:
         )
         
         self.page.add(self.conteudo)
+
+        # Login automático para desenvolvimento local (usa credenciais do .env)
+        self._tentar_login_automatico()
+
+    def _tentar_login_automatico(self):
+        from dotenv import load_dotenv
+        import os
+        load_dotenv()
+        usuario = os.getenv("USUARIO")
+        senha = os.getenv("SENHA")
+        if usuario and senha:
+            try:
+                self.page.cliente.auth.sign_in_with_password({"email": usuario, "password": senha})
+                self.page.go("/dashboard")
+            except Exception:
+                pass  # Credenciais inválidas ou ambiente remoto — mostra ecrã de login normalmente
 
     def toggle_aviso(self, e):
         self.aviso_seguranca.visible = self.salvar_login.value

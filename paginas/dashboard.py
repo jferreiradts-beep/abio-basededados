@@ -1,7 +1,6 @@
 import flet as ft
 import pandas as pd
 import numpy as np
-from escudo_supabase import login_supabase
 
 import os
 import re
@@ -211,7 +210,7 @@ class painelMapa:
         import io
         import base64
         buf = io.BytesIO()
-        plt.savefig(buf, format='png', dpi=200, transparent=True)
+        plt.savefig(buf, format='png', dpi=200, transparent=True, bbox_inches='tight', pad_inches=0)
         plt.close(fig)
         buf.seek(0)
         img_base64 = base64.b64encode(buf.read()).decode('utf-8')
@@ -220,7 +219,7 @@ class painelMapa:
     def montar_mapa(self):
         # Cria o container placeholder e guarda a referência
         self.container_mapa = ft.Container(
-            width=560, height=250, bgcolor=ft.Colors.GREY_200, border_radius=10,
+            width=410, height=250, bgcolor=ft.Colors.GREY_200, border_radius=10,
             content=ft.Stack([
                 ft.Container(
                     content=ft.Text(
@@ -248,7 +247,13 @@ class painelMapa:
 
         # Atualiza o conteúdo do container existente
         self.container_mapa.content = ft.Stack([
-                ft.Image(src_base64=img_base64, fit=ft.ImageFit.CONTAIN),
+                ft.Container(
+                    content=ft.Image(src_base64=img_base64, fit=ft.ImageFit.CONTAIN),
+                    alignment=ft.alignment.center,
+                    width=410,
+                    height=250,
+                    padding=ft.padding.only(top=35, bottom=10, left=10, right=10)
+                ),
                 ft.Container(
                     content=ft.Text(
                         value='Escopos por município',
@@ -279,9 +284,9 @@ class colunaIndividual:
         if self.nome == 'matricula':
             return 370
         elif self.nome == 'escopo':
-            return 170
+            return 115
         else:
-            return 270
+            return 205
 
     def carregar_conteudo(self):    
         self.lista.controls.clear()
@@ -335,7 +340,8 @@ class colunaIndividual:
         # Dados extras que cada painel precisa passar para o formulário
         avancar_extras = {
             'grupo':  {'nucleo_id': self.filtro['nucleo']['id']},
-            'escopo': {'matricula': self.filtro['matricula']['id']},
+            'uprod': {'matricula_id': self.filtro['matricula']['id']},
+            'escopo': {'uprod_id': self.filtro['uprod']['id']},
         }
         self.page.avancar_dados.update(avancar_extras.get(self.nome, {}))
 
@@ -345,38 +351,44 @@ class colunaIndividual:
         id_final = str(int(id_selecionado)) if id_selecionado != '0' else '0'
         self.page.session.set('id', id_final)
 
-        if self.nome == 'grupo' and id_final != '0':
-            self.page.go('/painel_grupo')
-        else:
-            self.page.go('/formulario')
+        self.page.go('/formulario')
 
     def selecionar(self, id_selecionado):
+        # Desmarca se clicar no mesmo id, marca se clicar em outro
+        if id_selecionado == self.filtro[self.nome]['id']:
+            id_selecionado = 0
         self.filtro[self.nome]['id'] = id_selecionado
         self.carregar_conteudo()
 
         # Atualizar colunas seguintes
+        # valor_pai: o ID selecionado que alimenta a próxima coluna.
+        # Depois da primeira coluna seguinte, o pai passa a ser 0 (nada selecionado),
+        # de modo que colunas mais distantes fiquem vazias.
+        valor_pai = id_selecionado
         coluna = self.coluna_seguinte
         seguinte_primeiro = True
         while coluna:
-            self.filtro[coluna.nome]['valor'] = id_selecionado
+            self.filtro[coluna.nome]['valor'] = valor_pai
             self.filtro[coluna.nome]['id'] = 0
             coluna.carregar_conteudo()
             coluna.lista.update()
 
             if seguinte_primeiro:
-                coluna.botao_novo.disabled = True if self.filtro[coluna.nome]['valor'] == 0 else False
+                coluna.botao_novo.disabled = True if valor_pai == 0 else False
                 seguinte_primeiro = False
             else:
                 coluna.botao_novo.disabled = True
             coluna.botao_novo.update()
 
-            id_selecionado = 0
+            # A partir daqui o pai é sempre 0: colunas mais à frente ficam vazias
+            valor_pai = 0
             coluna = coluna.coluna_seguinte
 
         # Chamar a produção de dados para produzir o card grid
-        # no caso de escopos
+        # no caso de escopos — se desselecionou (id=0), usa o filtro do pai para actualizar os cards
         if self.nome == 'escopo':
-            self.dados.filtrar_dados(self.nome, id_selecionado)
+            valor_para_cards = self.filtro[self.nome]['valor'] if id_selecionado == 0 else id_selecionado
+            self.dados.filtrar_dados(self.nome, valor_para_cards)
 
     def montar_coluna(self):
         return ft.Container(
@@ -408,6 +420,7 @@ class colunasDashboard:
                 'nucleo':    {'valor': 'all', 'id': 0},
                 'grupo':     {'valor': 0, 'id': 0},
                 'matricula': {'valor': 0, 'id': 0},
+                'uprod':     {'valor': 0, 'id': 0},
                 'escopo':    {'valor': 0, 'id': 0}
             }
 
@@ -415,6 +428,7 @@ class colunasDashboard:
             colunaIndividual(self.page, self.dados, 'nucleo',    self.filtro),
             colunaIndividual(self.page, self.dados, 'grupo',     self.filtro),
             colunaIndividual(self.page, self.dados, 'matricula', self.filtro),
+            colunaIndividual(self.page, self.dados, 'uprod',     self.filtro),
             colunaIndividual(self.page, self.dados, 'escopo',    self.filtro)
         ]
 
@@ -431,6 +445,7 @@ class colunasDashboard:
         self.filtro['nucleo']    = {'valor': 'all', 'id': 0}
         self.filtro['grupo']     = {'valor': 0, 'id': 0}
         self.filtro['matricula'] = {'valor': 0, 'id': 0}
+        self.filtro['uprod']     = {'valor': 0, 'id': 0}
         self.filtro['escopo']    = {'valor': 0, 'id': 0}
 
         self.colunas[0].selecionar(0)
@@ -438,7 +453,7 @@ class colunasDashboard:
     def linha_inferior(self):
         return ft.Row(
             [coluna.montar_coluna() for coluna in self.colunas],
-            spacing=20
+            spacing=10
         )
 
 
@@ -448,13 +463,15 @@ class dadosDashboard:
     MAPA_LABEL = {
         'nucleo':    'Núcleos',
         'grupo':     'Grupos',
-        'matricula': 'Matrículas',
-        'escopo':    'Escopos'
+        'matriculas': 'Matrículas',
+        'uprod':     'Unid. Produção',
+        'escopos':   'Escopos'
     }
     MAPA_COLUNA_FILTRO = {
         'grupo':     'id_nucleo',
         'matricula': 'id_grupo',
-        'escopo':    'matricula'
+        'uprod':     'id_matricula',
+        'escopo':    'id_uprod'
     }
 
     def __init__(self, cliente, situacoes=None):
@@ -517,18 +534,23 @@ class dadosDashboard:
         }
 
     def dados_colunas(self, dados_filtrados, coluna):
+        dados = dados_filtrados[[f'id_{coluna}', coluna]].copy()
+        # Remover linhas onde o ID da coluna é NaN (ex.: matrícula sem uprod)
+        dados = dados.dropna(subset=[f'id_{coluna}'])
+        dados = dados.drop_duplicates(subset=[f'id_{coluna}']).sort_values(by=coluna)
+        # Converter para int Python puro (pandas usa float64 quando há NULLs)
+        idx = [int(x) for x in dados[f'id_{coluna}']]
+
         if coluna == 'matricula':
-            dados = dados_filtrados[['matricula', 'primeiro_associado']].copy()
-            dados = dados.drop_duplicates().sort_values(by='matricula')
-            idx = dados['matricula'].to_list()
+            extra = dados_filtrados[['id_matricula', 'primeiro_associado']].drop_duplicates(subset=['id_matricula'])
+            dados = dados.merge(extra, on='id_matricula', how='left')
             dados['primeiro_associado'] = dados['primeiro_associado'].fillna('')
-            linhas = np.where(dados['primeiro_associado'] != '', dados['matricula'] + ' - ' + dados['primeiro_associado'], dados['matricula'])
-            linhas = list(linhas)
+            linhas = np.where(
+                dados['primeiro_associado'] != '',
+                dados['matricula'] + ' - ' + dados['primeiro_associado'],
+                dados['matricula']
+            ).tolist()
         else:
-            dados = dados_filtrados[[f'id_{coluna}', coluna]].copy()
-            dados = dados.drop_duplicates().sort_values(by=coluna)
-            # Converter para int Python puro (pandas usa float64 quando há NULLs)
-            idx = [int(x) for x in dados[f'id_{coluna}']]
             linhas = dados[coluna].to_list()
 
         return zip(idx, linhas)
@@ -542,7 +564,7 @@ class dadosDashboard:
         dados_filtrados = self.dados.loc[filtro].copy()
         dados_filtrados['validade'] = pd.to_datetime(dados_filtrados['validade'], errors='coerce')
         ass_filtrados = self.dados_de_associados.loc[self.dados_de_associados['id_escopo'].isin(dados_filtrados['id_escopo'])].copy()
-        ass_filtrados = ass_filtrados['cpf'].nunique()
+        ass_filtrados = ass_filtrados['id_associado'].nunique()
 
         # Construir dados dos cards e atualizar cards
         if valor_filtro != 0:
@@ -599,9 +621,7 @@ class DashboardBase:
         menu = ft.PopupMenuButton(
             icon=ft.Icons.MENU,
             items=[
-                ft.PopupMenuItem(text="Limpar filtros", on_click=self.colunas.limpar_filtro),
-                ft.PopupMenuItem(text="Configurações", on_click=lambda _: self.page.go("/configuracoes")),
-                ft.PopupMenuItem(text="Relatório MAPA", on_click=self.baixar_csv_mapa)
+                ft.PopupMenuItem(text="Configurações", on_click=lambda _: self.page.go("/configuracoes"))
             ]
         )
         return menu
@@ -665,8 +685,24 @@ class DashboardBase:
 
         # Linha superior
         self.mapa_montado = self.mapa.montar_mapa() # <-- para atualizar o mapa
+        
+        relatorios_container = ft.Container(
+            width=130, height=250, bgcolor=ft.Colors.GREY_200, border_radius=10,
+            padding=10,
+            content=ft.Column([
+                ft.Text("Relatórios", size=16, weight="bold"),
+                ft.ElevatedButton(
+                    "CNPO MAPA",
+                    width=100, height=30,
+                    style=ft.ButtonStyle(
+                        text_style=ft.TextStyle(size=11, weight=ft.FontWeight.BOLD),
+                    ),
+                    on_click=self.baixar_csv_mapa),
+            ], alignment=ft.MainAxisAlignment.START, horizontal_alignment=ft.CrossAxisAlignment.CENTER)
+        )
+        
         linha_superior = ft.Row(
-            [self.cards.montar_layout(), self.mapa_montado],
+            [self.cards.montar_layout(), relatorios_container, self.mapa_montado],
             spacing=20
         )
 
@@ -690,9 +726,10 @@ class DashboardBase:
 
 def iniciar_dashboard():
     def main(page: ft.Page):
+        from escudo_supabase import login_supabase
         page.cliente = login_supabase()
         DashboardBase(page)
     return main
 
 if __name__ == "__main__":
-    ft.app(target=iniciar_dashboard())
+    ft.app(target=iniciar_dashboard(), view=ft.WEB_BROWSER)

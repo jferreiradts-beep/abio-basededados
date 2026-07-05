@@ -1,7 +1,6 @@
 import flet as ft
 import unicodedata
-from escudo_supabase import login_supabase, aviso
-
+from escudo_supabase import aviso
 
 class DialogoEditarControle():
     def __init__(self, page, atualizar_painel):
@@ -583,6 +582,7 @@ class baseProdutos():
 
 def iniciar_painel_produtos(tipo_escopo = 3, id_escopo = 1):
     def main(page: ft.Page):
+        from escudo_supabase import login_supabase
         page.cliente = login_supabase()
         page.session.set("tipo_escopo", tipo_escopo)
         page.session.set("id", id_escopo)

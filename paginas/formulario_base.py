@@ -2,7 +2,7 @@ import flet as ft
 import pandas as pd
 import os
 from formulario_coluna2 import funcao_menu_lateral  
-from escudo_supabase import login_supabase, aviso
+from escudo_supabase import aviso
 from formatar_campos import formatar_cpf_cnpj
 import re
             
@@ -106,6 +106,131 @@ class botoesFormulario():
             mensagem = resposta.data.get('message', 'Erro desconhecido') if resposta else 'Sem resposta'
             aviso(self.page, f"Erro ao salvar formulário: {mensagem}")
 
+class aplicarMascara():
+    """Aplica uma máscara de formatação a um valor.
+    Se mascaras=None, o método aplicar_mascara devolve o valor inalterado (no-op).
+    """
+    def __init__(self, mascaras: str | None):
+        if mascaras:
+            self.mascaras = sorted(mascaras.split('; '), key=lambda x: x.count('#'))
+            self.c_mascaras = [x.count('#') for x in self.mascaras]
+            self.aplicar_mascara = self._aplicar_mascara_texto
+            self.salvar_limpo = self._salvar_limpo_texto
+            self.on_change = self._on_change_texto   # formata o display em tempo real
+        else:
+            self.aplicar_mascara = lambda valor: valor  # no-op
+            self.salvar_limpo = lambda valor: valor
+            self.on_change = lambda e: None             # no-op
+
+    def _aplicar_mascara_texto(self, valor):
+        valor_limpo = re.sub(r'[^0-9]', '', valor)
+
+        # Decidir máscara aplicável
+        c = len(valor_limpo)
+        id_mascara = next((i for i, limite in enumerate(self.c_mascaras) if c <= limite), -1)
+        mascara = self.mascaras[id_mascara] if id_mascara != -1 else None
+
+        # Aplicar máscara
+        i = 0
+        valor_final = ''
+        for m in mascara:
+            if m == '#':
+                if i >= c:
+                    break
+                valor_final += valor_limpo[i]
+                i += 1
+            else:
+                valor_final += m
+
+        return valor_final
+
+    def _salvar_limpo_texto(self, valor):
+        return re.sub(r'[^0-9]', '', valor)
+
+    def _on_change_texto(self, e):
+        """Formata o valor enquanto o utilizador digita, actualizando o controlo."""
+        e.control.value = self._aplicar_mascara_texto(e.control.value)
+        e.control.update()
+
+
+
+class campoFixo():
+    def __init__(self, page, resposta, campo, largura=(100, 250)):
+        self.page = page
+        self.resposta = resposta
+        self.campo = campo
+        self.largura = largura
+        self._dependentes = []   # outros campoFixo que precisam ser actualizados quando este muda
+
+        # Sempre cria a máscara — ela própria sabe o que fazer com None
+        mascara_str = self.resposta['campos_fixos'][self.campo].get('mascara')
+        self.mascara = aplicarMascara(mascara_str)
+
+        self.campo_ui = self.criar_campo()
+
+    # ------------------------------------------------------------------
+    # Observer: ligar dependências entre campos
+    # ------------------------------------------------------------------
+    def registar_dependente(self, outro_campo):
+        """Regista um campoFixo que deve recarregar as suas opções quando este campo muda."""
+        self._dependentes.append(outro_campo)
+
+    def recarregar_opcoes(self):
+        """Recarrega as opções do dropdown com base no valor actual do campo pai."""
+        opcoes_raw = self.consultar_opcoes()
+        self._entrada.options = [
+            ft.dropdown.Option(key=str(op['id']), text=op['opcao']) for op in opcoes_raw
+        ]
+        self._entrada.value = None
+        self.resposta['dados_fixos'][self.campo] = ''
+        # Notificar os próprios dependentes desta instância (encadeamento)
+        for dep in self._dependentes:
+            dep.recarregar_opcoes()
+        self._entrada.update()
+
+    # ------------------------------------------------------------------
+    # Construção do widget
+    # ------------------------------------------------------------------
+    def obter_valor_inicial(self):
+        valor_remoto = self.resposta['dados_fixos'].get(self.campo, None)
+        if not valor_remoto:
+            self.resposta['dados_fixos'][self.campo] = self.page.avancar_dados.get(self.campo, '')
+
+        valor = str(self.resposta['dados_fixos'][self.campo])
+        return valor
+
+    def criar_campo(self):
+        titulo = ft.Text(self.resposta['campos_fixos'][self.campo]['rotulo'], width=self.largura[0], weight="bold")
+        valor_inicial = self.obter_valor_inicial()
+
+        if self.resposta['campos_fixos'][self.campo].get('opcoes'):
+            opcoes_raw = self.consultar_opcoes()
+            opcoes_lista = [ft.dropdown.Option(key=str(opcao['id']), text=opcao['opcao']) for opcao in opcoes_raw]
+            self._entrada = ft.Dropdown(
+                value=str(valor_inicial) if valor_inicial else None, options=opcoes_lista,
+                width=self.largura[1], text_style=ft.TextStyle(size=13), menu_height=300,
+                on_change=lambda e: self.atualizar_campo(e.control.value))
+        else:
+            self._entrada = ft.TextField(
+                value=self.mascara.aplicar_mascara(valor_inicial),
+                width=self.largura[1], text_style=ft.TextStyle(size=13),
+                on_change=lambda e: (self.mascara.on_change(e), self.atualizar_campo(e.control.value)))
+        return ft.Row([titulo, self._entrada], alignment=ft.MainAxisAlignment.CENTER, spacing=10)
+
+    def atualizar_campo(self, valor):
+        self.resposta['dados_fixos'][self.campo] = self.mascara.salvar_limpo(valor)
+        # Notificar dependentes (Observer)
+        for dep in self._dependentes:
+            dep.recarregar_opcoes()
+        self.campo_ui.update()
+
+    def consultar_opcoes(self):
+        idx = self.resposta['campos_fixos'][self.campo]['id']
+        campo_consulta = self.resposta['campos_fixos'][self.campo]['filtro']
+        p_filtro = self.resposta['dados_fixos'].get(campo_consulta, '') or '0' 
+        print('idx', idx, 'p_filtro', p_filtro)
+        opcoes = self.page.cliente.rpc('obter_opcoes', {'idx': idx, 'p_filtro': p_filtro}).execute()
+        return opcoes.data
 
 class estruturaDeCampos():
     def __init__(self, page, resposta, atualizar_estrutura_de_campos):
@@ -119,130 +244,17 @@ class estruturaDeCampos():
             horizontal_alignment=ft.CrossAxisAlignment.START)
         self.construir_area_rolavel()
 
-    def campo_fixo(self, metainformacao, valor_inicial = '', opcoes = [], largura=(150, 200), chave=''):
-        
-        def atualizar_valor(e, chave):
-            valor = re.sub(r'\D', '', e.control.value) if chave == 'cpf' else e.control.value
-            self.resposta['dados_fixos'][chave] = valor
-
-            if metainformacao['rotulo'] == 'Tipo de escopo':
-                self.page.session.set("tipo_escopo", e.control.value)
-                nome_label = next(opcao['nome'] for opcao in opcoes if opcao['id'] == int(e.control.value))
-                self.page.session.set("nome_escopo", nome_label)
-
-        campo = ft.Text(metainformacao['rotulo'], width=largura[0], weight="bold")
-        
-        # Recuperar valor do avançar_dados INDEPENDENTE de ser Dropdown ou TextField
-        valor_avancar = self.page.avancar_dados.get(chave, '')
-        if valor_avancar and not valor_inicial:
-            valor_inicial = valor_avancar
-            self.resposta['dados_fixos'][chave] = valor_avancar
-
-        if len(opcoes) > 0:
-            opcoes_lista = []
-            encurtar = len(opcoes) > 6
-            opcoes = sorted(opcoes, key=lambda x: x['nome'])
-            for opcao in opcoes:
-                nome = opcao['nome'].split(' ')[0]+ ' ' + opcao['nome'].split(' ')[-1] if encurtar else opcao['nome']
-                opcoes_lista.append(ft.dropdown.Option(key=str(opcao['id']), text=nome))
-            
-            valor_ini_str = str(valor_inicial) if valor_inicial else None
-            valor = ft.Dropdown(value=valor_ini_str, options=opcoes_lista, width=largura[1], text_style=ft.TextStyle(size=13), menu_height= 300,
-                                on_change=lambda e, chave=chave: atualizar_valor(e, chave))
-        else:
-            valor_inicial = formatar_cpf_cnpj(valor_inicial) if chave == 'cpf' else valor_inicial
-            valor = ft.TextField(value=valor_inicial, width=largura[1], text_style=ft.TextStyle(size=13),
-                                 on_blur=lambda e, chave=chave: atualizar_valor(e, chave))
-    
-        if metainformacao['rotulo'] == 'CPF ou CNPJ':
-            valor.on_change = lambda e: (setattr(e.control, "value", formatar_cpf_cnpj(e.control.value)),
-                                         e.control.update())
-
-        if metainformacao['rotulo'] == 'Tipo de escopo' and valor_inicial:
-            self.page.session.set("tipo_escopo", valor_inicial)
-            nome_label = [opcao['nome'] for opcao in opcoes if str(opcao['id']) == str(valor_inicial)][0]
-            self.page.session.set("nome_escopo", nome_label)
-
-        return ft.Row([campo,valor], alignment=ft.MainAxisAlignment.CENTER, spacing=10)
-
-    def campo_ajustavel(self, posicao, opcoes_label=[], valor_inicial='', largura=(150, 200)):
-
-        def eliminar_confirmado(e):
-            dialogo.open = False
-            self.resposta['dados_ajustaveis'].pop(posicao)
-            self.atualizar_estrutura_de_campos()
-            self.page.update()
-
-        def eliminar_cancelado(e):
-            dialogo.open = False
-            label_dropdown.value = self.resposta['dados_ajustaveis'][posicao]['campo_id']
-            label_dropdown.update()
-            self.page.update()
-
-        def atualizar_label(e):
-            if e.control.value == 'Eliminar':
-                # Buscar o nome a partir do ID guardado
-                campo_id = self.resposta['dados_ajustaveis'][posicao]['campo_id']
-                nome_campo = next(
-                    (op['nome'] for op in opcoes_label if op['id'] == campo_id),
-                    'este campo'
-                )
-                dialogo.content = ft.Text(f"Tem a certeza que deseja eliminar o campo \u00ab{nome_campo}\u00bb?")
-                if dialogo not in self.page.overlay:
-                    self.page.overlay.append(dialogo)
-                dialogo.open = True
-                self.page.update()
-            else:
-                self.resposta['dados_ajustaveis'][posicao]['campo_id'] = e.control.value
-
-        def atualizar_valor(e):
-            self.resposta['dados_ajustaveis'][posicao]['valor'] = e.control.value
-
-        dialogo = ft.AlertDialog(
-            title=ft.Text("Confirmar eliminação"),
-            content=ft.Text(""),  # preenchido em atualizar_label
-            actions=[
-                ft.TextButton("Cancelar", on_click=eliminar_cancelado),
-                ft.TextButton("Eliminar", on_click=eliminar_confirmado),
-            ]
-        )
-
-        # Dropdown como "label"
-        opcoes_lista = [ft.dropdown.Option(key=opcao['id'], text=opcao['nome']) for opcao in opcoes_label] +\
-            [ft.dropdown.Option(key='Eliminar', text='Eliminar')]
-
-        label_dropdown = ft.Dropdown(
-            value=self.resposta['dados_ajustaveis'][posicao].get('campo_id'),
-            options=opcoes_lista,
-            hint_text='Selecione',
-            width=largura[0],
-            text_style=ft.TextStyle(size=13, weight="bold"),
-            border=ft.InputBorder.NONE,
-            border_radius=0,
-            on_change=atualizar_label
-        )
-
-        # Campo de texto para o valor
-        valor_textfield = ft.TextField(
-            value=valor_inicial,
-            width=largura[1],
-            text_style=ft.TextStyle(size=13),
-            on_blur=atualizar_valor
-        )
-
-        return ft.Row([label_dropdown, valor_textfield], alignment=ft.MainAxisAlignment.CENTER, spacing=10)
-
     def construir_area_rolavel(self):
-        # Construir campo nome
-        nome_opcoes = self.resposta['opcoes']['nome'] if 'nome' in self.resposta['opcoes'] else []
-        nome = ft.Row([
-            self.campo_fixo(self.resposta['campos_fixos']['nome'], self.resposta['dados_fixos']['nome'], \
-                largura=(150, 360), chave='nome', opcoes=nome_opcoes)
-        ],
-        spacing=20,
-        alignment=ft.MainAxisAlignment.START)
-        
-        # Construir colunas
+        # Guardar instâncias para evitar garbage collection dos event handlers
+        self._campos = {}
+        self._campos_ajustaveis = []
+
+        # Campo nome (mais largo)
+        inst_nome = campoFixo(self.page, self.resposta, 'nome', largura=(100, 400))
+        self._campos['nome'] = inst_nome
+        nome = ft.Row([inst_nome.campo_ui], spacing=20, alignment=ft.MainAxisAlignment.START)
+
+        # Construir colunas com os restantes campos fixos (ordenados por 'ordem')
         outros_fixos = [
             campo
             for campo, info in sorted(
@@ -256,31 +268,128 @@ class estruturaDeCampos():
         segunda_coluna = []
 
         for i, campo in enumerate(outros_fixos):
-            opcoes = self.resposta['opcoes'][campo] if campo in self.resposta['opcoes'] else []
+            inst = campoFixo(self.page, self.resposta, campo)
+            self._campos[campo] = inst
             if i % 2 == 0:
-                primeira_coluna.append(self.campo_fixo(self.resposta['campos_fixos'][campo], self.resposta['dados_fixos'][campo], opcoes, chave=campo))
+                primeira_coluna.append(inst.campo_ui)
             else:
-                segunda_coluna.append(self.campo_fixo(self.resposta['campos_fixos'][campo], self.resposta['dados_fixos'][campo], opcoes, chave=campo))
-        
-        for i, campo in enumerate(self.resposta['dados_ajustaveis']):
+                segunda_coluna.append(inst.campo_ui)
+
+        for i, dado in enumerate(self.resposta['dados_ajustaveis']):
+            inst_aj = campoAjustavel(
+                self.page, self.resposta, i,
+                self.resposta['campos_ajustaveis'],
+                self.atualizar_estrutura_de_campos
+            )
+            self._campos_ajustaveis.append(inst_aj)
             if (i + len(outros_fixos)) % 2 == 0:
-                primeira_coluna.append(self.campo_ajustavel(i, self.resposta['campos_ajustaveis'], self.resposta['dados_ajustaveis'][i]['valor']))
+                primeira_coluna.append(inst_aj.campo_ui)
             else:
-                segunda_coluna.append(self.campo_ajustavel(i, self.resposta['campos_ajustaveis'], self.resposta['dados_ajustaveis'][i]['valor']))
+                segunda_coluna.append(inst_aj.campo_ui)
+
+        # --- Observer: ligar dependências entre campos fixos ---
+        # Se filtro != 'id', este campo depende do valor de outro campo
+        for campo_nome, inst in self._campos.items():
+            filtro = self.resposta['campos_fixos'].get(campo_nome, {}).get('filtro')
+            if filtro and filtro != 'id' and filtro in self._campos:
+                self._campos[filtro].registar_dependente(inst)
 
         self.area_rolavel.controls = [
             nome,
             ft.Row([
                 ft.Column(primeira_coluna, spacing=10),
                 ft.Column(segunda_coluna, spacing=10)
-                ], 
+                ],
                 alignment=ft.MainAxisAlignment.START,
-                vertical_alignment=ft.CrossAxisAlignment.START, 
-            spacing=20)
+                vertical_alignment=ft.CrossAxisAlignment.START,
+                spacing=20)
         ]
 
         # Limpar avançar dados
         self.page.avancar_dados = {}
+
+
+class campoAjustavel():
+    """Campo ajustável (label via Dropdown + valor via TextField).
+    Inclui a opção 'Eliminar' com diálogo de confirmação.
+    Todos os valores são texto puro, sem máscara.
+    """
+    def __init__(self, page, resposta, posicao, opcoes_label, atualizar_estrutura_de_campos, largura=(150, 200)):
+        self.page = page
+        self.resposta = resposta
+        self.posicao = posicao
+        self.opcoes_label = opcoes_label
+        self.atualizar_estrutura_de_campos = atualizar_estrutura_de_campos
+        self.largura = largura
+
+        self.dialogo = ft.AlertDialog(
+            title=ft.Text("Confirmar eliminação"),
+            content=ft.Text(""),  # preenchido em _atualizar_label
+            actions=[
+                ft.TextButton("Cancelar", on_click=self._eliminar_cancelado),
+                ft.TextButton("Eliminar", on_click=self._eliminar_confirmado),
+            ]
+        )
+
+        self.campo_ui = self._criar_campo()
+
+    def _criar_campo(self):
+        opcoes_lista = (
+            [ft.dropdown.Option(key=op['id'], text=op['nome']) for op in self.opcoes_label]
+            + [ft.dropdown.Option(key='Eliminar', text='Eliminar')]
+        )
+
+        self.label_dropdown = ft.Dropdown(
+            value=self.resposta['dados_ajustaveis'][self.posicao].get('campo_id'),
+            options=opcoes_lista,
+            hint_text='Selecione',
+            width=self.largura[0],
+            text_style=ft.TextStyle(size=13, weight="bold"),
+            border=ft.InputBorder.NONE,
+            border_radius=0,
+            on_change=self._atualizar_label
+        )
+
+        self.valor_textfield = ft.TextField(
+            value=self.resposta['dados_ajustaveis'][self.posicao].get('valor', ''),
+            width=self.largura[1],
+            text_style=ft.TextStyle(size=13),
+            on_blur=self._atualizar_valor
+        )
+
+        return ft.Row([self.label_dropdown, self.valor_textfield],
+                      alignment=ft.MainAxisAlignment.CENTER, spacing=10)
+
+    def _atualizar_label(self, e):
+        if e.control.value == 'Eliminar':
+            campo_id = self.resposta['dados_ajustaveis'][self.posicao]['campo_id']
+            nome_campo = next(
+                (op['nome'] for op in self.opcoes_label if op['id'] == campo_id),
+                'este campo'
+            )
+            self.dialogo.content = ft.Text(f"Tem a certeza que deseja eliminar o campo \u00ab{nome_campo}\u00bb?")
+            if self.dialogo not in self.page.overlay:
+                self.page.overlay.append(self.dialogo)
+            self.dialogo.open = True
+            self.page.update()
+        else:
+            self.resposta['dados_ajustaveis'][self.posicao]['campo_id'] = e.control.value
+
+    def _atualizar_valor(self, e):
+        self.resposta['dados_ajustaveis'][self.posicao]['valor'] = e.control.value
+
+    def _eliminar_confirmado(self, e):
+        self.dialogo.open = False
+        self.resposta['dados_ajustaveis'].pop(self.posicao)
+        self.atualizar_estrutura_de_campos()
+        self.page.update()
+
+    def _eliminar_cancelado(self, e):
+        self.dialogo.open = False
+        self.label_dropdown.value = self.resposta['dados_ajustaveis'][self.posicao]['campo_id']
+        self.label_dropdown.update()
+        self.page.update()
+
 
 class dadosFormulario():
     def __init__(self, page):
@@ -443,8 +552,9 @@ class baseFormulario():
 
 
 
-def iniciar_formulario(tipo = 'escopo', id = 295):
+def iniciar_formulario(tipo = 'uprod', id = 12):
     def main(page: ft.Page):
+        from escudo_supabase import login_supabase
         page.cliente = login_supabase()
         page.session.set("tipo", tipo)
         page.session.set("id", id)
@@ -455,4 +565,4 @@ def iniciar_formulario(tipo = 'escopo', id = 295):
     return main
 
 if __name__ == "__main__":
-    ft.app(target=iniciar_formulario())
+    ft.app(target=iniciar_formulario(), view=ft.AppView.WEB_BROWSER)

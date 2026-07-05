@@ -2,7 +2,7 @@ import flet as ft
 import pandas as pd
 from datetime import date, datetime
 from formulario_coluna2 import verAcontecimentos
-from escudo_supabase import login_supabase, aviso
+from escudo_supabase import aviso
 
 class quadroTabela():
     # Mapeamento índice → chave do dict de dados
@@ -286,6 +286,7 @@ class grupoBase():
 
 def iniciar_dashboard_nucleos(id=21):
     def main(page: ft.Page):
+        from escudo_supabase import login_supabase
         page.cliente = login_supabase()
         page.session.set("id", id)
         page.avancar_dados = {}
