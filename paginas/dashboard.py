@@ -63,12 +63,14 @@ class janelaNovaMatricula():
         
         # Salvar matricula
         try:
-            self.page.cliente.table('matriculas').insert({
+            resposta = self.page.cliente.table('matricula').insert({
                 'grupo_id': self.grupo.value,
-                'matricula': self.matricula.value
+                'nome': self.matricula.value
             }).execute()
-            
-            self.page.session.set('id', self.matricula.value)
+
+            novo_id = resposta.data[0]['id']
+
+            self.page.session.set('id', novo_id)
             
             self.janela.open = False
             self.page.update()
@@ -463,9 +465,9 @@ class dadosDashboard:
     MAPA_LABEL = {
         'nucleo':    'Núcleos',
         'grupo':     'Grupos',
-        'matriculas': 'Matrículas',
+        'matricula': 'Matrículas',
         'uprod':     'Unid. Produção',
-        'escopos':   'Escopos'
+        'escopo':   'Escopos'
     }
     MAPA_COLUNA_FILTRO = {
         'grupo':     'id_nucleo',
@@ -631,10 +633,6 @@ class DashboardBase:
         import time
         import pandas as pd
         
-        self.page.snack_bar = ft.SnackBar(ft.Text("Gerando CSV..."), bgcolor="blue")
-        self.page.snack_bar.open = True
-        self.page.update()
-
         try:
             resposta = self.page.cliente.table('vw_mapa_mapa').select('*').execute()
             if not resposta.data:
@@ -698,6 +696,31 @@ class DashboardBase:
                         text_style=ft.TextStyle(size=11, weight=ft.FontWeight.BOLD),
                     ),
                     on_click=self.baixar_csv_mapa),
+                ft.ElevatedButton(
+                    "Rel. Técnico",
+                    width=100, height=30,
+                    style=ft.ButtonStyle(
+                        text_style=ft.TextStyle(size=11, weight=ft.FontWeight.BOLD),
+                    ),
+                    on_click=lambda _: (
+                        self.page.voltar_dados['endereco'].append(self.page.route),
+                        self.page.voltar_dados['dados_pagina'].append({'dashboard_filtro': self.colunas.filtro}),
+                        self.page.avancar_dados.update({
+                            'nucleo_id': self.colunas.filtro.get('nucleo', {}).get('id') or None,
+                            'grupo_id': self.colunas.filtro.get('grupo', {}).get('id') or None}),
+                        self.page.go('/painel_grupo')
+                    )),
+                ft.ElevatedButton(
+                    "Rel. Financeiro",
+                    width=100, height=30,
+                    style=ft.ButtonStyle(
+                        text_style=ft.TextStyle(size=11, weight=ft.FontWeight.BOLD),
+                    ),
+                    on_click=lambda _: (
+                        self.page.voltar_dados['endereco'].append(self.page.route),
+                        self.page.voltar_dados['dados_pagina'].append({'dashboard_filtro': self.colunas.filtro}),
+                        self.page.go('/relatorio_financeiro')
+                    )),
             ], alignment=ft.MainAxisAlignment.START, horizontal_alignment=ft.CrossAxisAlignment.CENTER)
         )
         

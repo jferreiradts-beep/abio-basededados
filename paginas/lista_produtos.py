@@ -142,7 +142,8 @@ class janelaNovoProduto():
             dados = {'nome': self.novo_nome.value, 'grupo_id': self.pertence.value}
         else:
             tabela = 'grupo_prod'
-            dados = {'nome': self.novo_nome.value, 'tipo_escopo_id': self.page.session.get('tipo_escopo')}  # corrigido: session.get
+            tipo = self.page.avancar_dados.get('tipo_escopo') or self.page.session.get('tipo_escopo')
+            dados = {'nome': self.novo_nome.value, 'tipo_escopo_id': tipo}
 
         try:
             resposta = self.cliente.table(tabela).insert(dados).execute()
@@ -521,7 +522,9 @@ class dadosProdutos():
     def __init__(self, page):
         self.page = page
         self.cliente = page.cliente
-        self.tipo_escopo = page.session.get("tipo_escopo")
+        # Prioridade: avancar_dados (vindo de verProdutos) > session (fluxo directo)
+        self.tipo_escopo = page.avancar_dados.pop('tipo_escopo', None) \
+                           or page.session.get("tipo_escopo")
         _id_raw = page.session.get("id")
         self.id_escopo = int(_id_raw) if _id_raw not in (None, '0', 0) else _id_raw
 

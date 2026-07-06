@@ -274,8 +274,9 @@ class verAcontecimentos():
 # Classe ver ou editar produtos
 
 class verProdutos():
-    def __init__(self, page):
+    def __init__(self, page, tipo_escopo=None):
         self.page = page
+        self.tipo_escopo = tipo_escopo
         self.dados_produtos = self.obter_dados()
         self.exibir_janela_produtos()
 
@@ -284,15 +285,13 @@ class verProdutos():
         return resposta.data or {}
 
     def montar_janela(self):
-        # Caso não tenha um escopo salvo, exibe mensagem
-        if self.page.session.get('id') == '0' or self.page.session.get('tipo_escopo') is None:
-            if self.page.session.get('id') == '0':
-                return escopoNaoSalvo(fechar_janela=self.fechar_janela_produtos).janela
-            else:
-                return escopoNaoSalvo(tipo=True, fechar_janela=self.fechar_janela_produtos).janela
+        if self.page.session.get('id') == '0':
+            return escopoNaoSalvo(fechar_janela=self.fechar_janela_produtos).janela
 
-        escopo = self.page.session.get('tipo_escopo')
-        grupos_produtos = self.dados_produtos.get(str(escopo), [])
+        if self.tipo_escopo is None:
+            return escopoNaoSalvo(tipo=True, fechar_janela=self.fechar_janela_produtos).janela
+
+        grupos_produtos = self.dados_produtos.get(str(self.tipo_escopo), [])
             
         self.coluna_produtos = ft.Column([], scroll=ft.ScrollMode.AUTO)
         for grupo in grupos_produtos:
@@ -321,6 +320,7 @@ class verProdutos():
 
     def editar_janela_produtos(self, e):
         self.cancelar_janela_produtos(e)
+        self.page.avancar_dados['tipo_escopo'] = self.tipo_escopo
         self.page.go('/produtos')
 
     def cancelar_janela_produtos(self, e):
@@ -403,94 +403,6 @@ class nomesCertificado():
         self.janela_nomes.open = True
         self.page.update()
 
-class novaUProd():
-    def __init__(self, page, dados, atualizar_formulario, opcoes_mun_estados):
-        self.page = page
-        self.dados = dados
-        self.atualizar_formulario = atualizar_formulario
-        self.opcoes_mun_estados = opcoes_mun_estados
-        self.exibir_janela_nova_uprod()
-
-
-    def linha_mun_estados(self, estado = None):
-        # Definir estados e municípios
-        lista_municipios = self.opcoes_mun_estados.loc[self.opcoes_mun_estados['SIGLA_UF'] == estado, 'NM_MUN']
-        lista_municipios = [ft.dropdown.Option(x) for x in lista_municipios]
-
-        dd_estado = ft.Dropdown(label='Estado', value=estado, options= lista_estados, width=150,
-                                on_change = self.atualizar_dd_municipios) 
-        dd_municipio = ft.Dropdown(label='Município', options= lista_municipios, width=150)
-
-        return ft.Row([
-            dd_estado,
-            dd_municipio
-        ])
-
-    def atualizar_dd_municipios(self, e):
-        lista_municipios = self.opcoes_mun_estados.loc[self.opcoes_mun_estados['SIGLA_UF'] == e.control.value, 'NM_MUN']
-        self.dd_municipio.options = [ft.dropdown.Option(x) for x in lista_municipios]
-        self.dd_municipio.update()
-    
-    def montar_janela_nova_uprod(self):
-        if self.page.session.get('id') == '0':
-            return escopoNaoSalvo(fechar_janela=self.fechar_janela_nuprod).janela
-
-        lista_estados = [ft.dropdown.Option(x) for x in self.opcoes_mun_estados['SIGLA_UF'].unique()]
-        self.txt_nome_uprod = ft.TextField(label='Nome da unidade de produção')
-        self.txt_endereco = ft.TextField(label= 'Endereço')
-        self.dd_estado = ft.Dropdown(label='Estado', options= lista_estados, width=150, on_change= self.atualizar_dd_municipios)
-        self.dd_municipio = ft.Dropdown(label='Município', options= None, width=150)
-
-        return ft.AlertDialog(
-            title=ft.Text("Adicionar unidade de produção"),
-            content=ft.Container(
-                width=350, height=200,
-                content=ft.Column([
-                    self.txt_nome_uprod,
-                    self.txt_endereco,
-                    ft.Row([
-                        self.dd_estado,
-                        self.dd_municipio
-                    ])
-                ])
-            ),
-            actions=[
-                ft.TextButton("Salvar", on_click=self.salvar_uprod),
-                ft.TextButton("Cancelar", on_click=self.fechar_janela_nuprod)
-            ]
-        )
-
-    def fechar_janela_nuprod(self, e):
-        self.janela_nova_uprod.open = False
-        self.page.update()
-
-    def salvar_uprod(self, e):
-        dados = {
-            'nome': self.txt_nome_uprod.value,
-            'endereco': self.txt_endereco.value,
-            'estado': self.dd_estado.value,
-            'municipio': self.dd_municipio.value
-        }
-        try:
-            salvar_uprod = self.page.cliente.table('uprod').insert(dados).execute()
-            novo_id = salvar_uprod.data[0]['id']
-            self.dados['opcoes']['uprod_id'].append({'id': novo_id, 'nome': dados['nome']})
-            self.dados['dados_fixos']['uprod_id'] = novo_id
-
-            self.fechar_janela_nuprod(None)
-            aviso(self.page, f"Unidade de produção criada com sucesso! ID: {novo_id}")
-            self.atualizar_formulario()
-
-        except Exception as e:
-            self.fechar_janela_nuprod(None)
-            aviso(self.page, f"Erro ao criar unidade de produção: {e}")
-
-    def exibir_janela_nova_uprod(self):
-        self.janela_nova_uprod = self.montar_janela_nova_uprod()
-        self.page.overlay.append(self.janela_nova_uprod)
-        self.janela_nova_uprod.open = True
-        self.page.update()
-
 
 class imprimirEscopo():
     def __init__(self, page, escopo = True):
@@ -561,17 +473,36 @@ class menuEscopo():
         dados = self.page.cliente.rpc('obter_info_escopo', {'p_escopo_id': self.page.session.get('id')}).execute()
         return dados.data
 
+    @staticmethod
+    def _fmt_data(valor):
+        """Converte AAAA-MM-DD para DD/MM/AAAA; devolve o original se falhar."""
+        try:
+            return datetime.strptime(valor, '%Y-%m-%d').strftime('%d/%m/%Y')
+        except (ValueError, TypeError):
+            return valor or ''
+
    
+    def obter_tipo_escopo(self):
+        """Encontra genericamente o campo cujo rótulo é 'Tipo de escopo'
+        e devolve o seu valor a partir de dados_fixos."""
+        for chave, meta in self.dados.get('campos_fixos', {}).items():
+            if meta.get('rotulo', '').strip().lower() == 'tipo de escopo':
+                return self.dados['dados_fixos'].get(chave)
+        return None
+
     def ver_registro_acontecimentos(self, e):
         id = self.page.session.get('id')
-        verAcontecimentos(self.page, id)
+        verAcontecimentos(self.page, id, ao_salvar=self.atualizar_dados_basicos)
+
+    def atualizar_dados_basicos(self):
+        dados = self.obter_dados()
+        self.txt_validade.value = self._fmt_data(dados['validade'])
+        self.txt_ultima_atividade.value = dados['ultima_atualizacao']
+        self.txt_validade.update()
+        self.txt_ultima_atividade.update()
         
     def visualizar_produtos(self, e):
-        verProdutos(self.page)
-
-
-    def adicionar_unidade_producao(self, e):
-        novaUProd(self.page, self.dados, self.atualizar_formulario, self.opcoes_mun_estados)
+        verProdutos(self.page, tipo_escopo=self.obter_tipo_escopo())
 
     def editar_nomes_certificado(self, e):
         nomesCertificado(self.page)
@@ -584,6 +515,9 @@ class menuEscopo():
             
     def montar_menu(self):
         dados = self.obter_dados()
+        self.txt_validade = ft.Text(self._fmt_data(dados['validade']), weight="bold")
+        self.txt_ultima_atividade = ft.Text(dados['ultima_atualizacao'], weight="bold")
+
         return ft.Column([
             ft.Text('Escopo é a descrição formal das atividades orgânicas que serão avaliadas pelo SPG para fins de conformidade.'),
             ft.Divider(),
@@ -593,9 +527,6 @@ class menuEscopo():
                     vertical_alignment=ft.CrossAxisAlignment.CENTER),
             ft.Row([ft.Text('Ver ou editar produtos:', width=250),
                     ft.ElevatedButton('Ok', on_click=self.visualizar_produtos, width=50, height=30)],
-                    vertical_alignment=ft.CrossAxisAlignment.CENTER),
-            ft.Row([ft.Text('Adicionar unidade de produção:', width=250),
-                    ft.ElevatedButton('Ok', on_click=self.adicionar_unidade_producao, width=50, height=30)],
                     vertical_alignment=ft.CrossAxisAlignment.CENTER),
             ft.Row([ft.Text('Editar nomes no certificado:', width=250),
                     ft.ElevatedButton('Ok', on_click=self.editar_nomes_certificado, width=50, height=30)],
@@ -608,8 +539,7 @@ class menuEscopo():
                     vertical_alignment=ft.CrossAxisAlignment.CENTER),
             ft.Divider(),
             ft.Text('Dados básicos:', size=16, weight="bold"),
-            ft.Row([ft.Text('Validade:'), ft.Text(dados['validade'], weight="bold")], spacing=10),
-            ft.Row([ft.Text('Última atividade:'), ft.Text(dados['ultima_atualizacao'], weight="bold")], spacing=10),
-            
+            ft.Row([ft.Text('Validade:'), self.txt_validade], spacing=10),
+            ft.Row([ft.Text('Última atividade:'), self.txt_ultima_atividade], spacing=10),
             ],
             spacing=10)

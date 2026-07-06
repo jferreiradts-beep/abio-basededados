@@ -5,7 +5,9 @@ from formulario_coluna2 import funcao_menu_lateral
 from escudo_supabase import aviso
 from formatar_campos import formatar_cpf_cnpj
 import re
-            
+
+COR_MODIFICADO = "#FFFDE7"   # amarelo pálido — campo com valor não salvo
+COR_NORMAL     = None        # fundo padrão do tema
 
 class janelaNovoRotulo():
     def __init__(self, page, resposta, atualizar_estrutura_de_campos):
@@ -79,32 +81,40 @@ class botoesFormulario():
         self.ver_janela_nrotulo()
 
     def voltar(self, e):
-        retorno = self.page.voltar_dados['endereco'][-1] if self.page.voltar_dados['endereco'] else '/dashboard'
-        voltar_dados = self.page.voltar_dados['dados_pagina'][-1] if self.page.voltar_dados['dados_pagina'] else None
+        endereco_lista = self.page.voltar_dados.get('endereco', [])
+        dados_lista    = self.page.voltar_dados.get('dados_pagina', [])
+        retorno     = endereco_lista[-1] if endereco_lista else '/dashboard'
+        voltar_dados = dados_lista[-1] if dados_lista else None
         if voltar_dados:
             for chave, valor in voltar_dados.items():
                 self.page.session.set(chave, valor)
-
-        self.page.voltar_dados['endereco'].pop()
-        self.page.voltar_dados['dados_pagina'].pop()
-
+        if endereco_lista:
+            self.page.voltar_dados['endereco'].pop()
+        if dados_lista:
+            self.page.voltar_dados['dados_pagina'].pop()
         self.page.go(retorno)
 
     def salvar(self, e):
         self.cliente = self.page.cliente
         self.tipo = self.page.session.get('tipo')
-        resposta = self.cliente.rpc('salvar_formulario', {'p_tabela': self.tipo, 'p_dados': self.resposta}).execute()
-        
+        try:
+            resposta = self.cliente.rpc('salvar_formulario', {'p_tabela': self.tipo, 'p_dados': self.resposta}).execute()
+        except Exception as ex:
+            aviso(self.page, f"Erro de ligação ao servidor: {ex}")
+            return
+
         if resposta and resposta.data.get('status') == 'success':
             novo_id = resposta.data['id']
             self.page.session.set('id', novo_id)
-            # Actualizar o id no dicionário local para que salvamentos
-            # subsequentes façam UPDATE em vez de novo INSERT
             self.resposta['dados_fixos']['id'] = novo_id
-            aviso(self.page, "Formulário salvo com sucesso!")
+            # Limpar a cor de todos os campos (sinal visual de guardado)
+            if hasattr(self, 'campos_ref'):
+                for inst in self.campos_ref:
+                    inst.marcar_salvo()
         else:
             mensagem = resposta.data.get('message', 'Erro desconhecido') if resposta else 'Sem resposta'
             aviso(self.page, f"Erro ao salvar formulário: {mensagem}")
+
 
 class aplicarMascara():
     """Aplica uma máscara de formatação a um valor.
@@ -124,6 +134,8 @@ class aplicarMascara():
 
     def _aplicar_mascara_texto(self, valor):
         valor_limpo = re.sub(r'[^0-9]', '', valor)
+        if len(valor_limpo) == 0:
+            return None
 
         # Decidir máscara aplicável
         c = len(valor_limpo)
@@ -203,6 +215,11 @@ class campoFixo():
         titulo = ft.Text(self.resposta['campos_fixos'][self.campo]['rotulo'], width=self.largura[0], weight="bold")
         valor_inicial = self.obter_valor_inicial()
 
+        # Cor inicial: amarelo se registo novo (id nulo/zero), normal se existente
+        id_val = self.resposta['dados_fixos'].get('id')
+        novo_registo = not id_val or str(id_val) in ('0', '', 'None')
+        bgcolor_ini = COR_MODIFICADO if novo_registo else COR_NORMAL
+
         if self.resposta['campos_fixos'][self.campo].get('opcoes'):
             opcoes_raw = self.consultar_opcoes()
             opcoes_lista = [ft.dropdown.Option(key=str(opcao['id']), text=opcao['opcao']) for opcao in opcoes_raw]
@@ -215,10 +232,25 @@ class campoFixo():
                 value=self.mascara.aplicar_mascara(valor_inicial),
                 width=self.largura[1], text_style=ft.TextStyle(size=13),
                 on_change=lambda e: (self.mascara.on_change(e), self.atualizar_campo(e.control.value)))
-        return ft.Row([titulo, self._entrada], alignment=ft.MainAxisAlignment.CENTER, spacing=10)
+
+        # Container dá cor uniforme a TextField e Dropdown
+        self._container = ft.Container(content=self._entrada, bgcolor=bgcolor_ini, border_radius=5)
+        return ft.Row([titulo, self._container], alignment=ft.MainAxisAlignment.CENTER, spacing=10)
+
+    # ------------------------------------------------------------------
+    # Feedback visual: campo modificado vs salvo
+    # ------------------------------------------------------------------
+    def marcar_modificado(self):
+        self._container.bgcolor = COR_MODIFICADO
+        self._container.update()
+
+    def marcar_salvo(self):
+        self._container.bgcolor = COR_NORMAL
+        self._container.update()
 
     def atualizar_campo(self, valor):
         self.resposta['dados_fixos'][self.campo] = self.mascara.salvar_limpo(valor)
+        self.marcar_modificado()
         # Notificar dependentes (Observer)
         for dep in self._dependentes:
             dep.recarregar_opcoes()
@@ -227,8 +259,12 @@ class campoFixo():
     def consultar_opcoes(self):
         idx = self.resposta['campos_fixos'][self.campo]['id']
         campo_consulta = self.resposta['campos_fixos'][self.campo]['filtro']
-        p_filtro = self.resposta['dados_fixos'].get(campo_consulta, '') or '0' 
-        print('idx', idx, 'p_filtro', p_filtro)
+        p_filtro = self.resposta['dados_fixos'].get(campo_consulta, None)
+        
+        # Previne erro no servidor caso campo_filtro não tenha valor
+        if p_filtro == "" or p_filtro == None:
+            p_filtro = 0
+        
         opcoes = self.page.cliente.rpc('obter_opcoes', {'idx': idx, 'p_filtro': p_filtro}).execute()
         return opcoes.data
 
@@ -334,6 +370,11 @@ class campoAjustavel():
         self.campo_ui = self._criar_campo()
 
     def _criar_campo(self):
+        # Cor inicial igual à dos campos fixos
+        id_val = self.resposta['dados_fixos'].get('id')
+        novo_registo = not id_val or str(id_val) in ('0', '', 'None')
+        bgcolor_aj = COR_MODIFICADO if novo_registo else COR_NORMAL
+
         opcoes_lista = (
             [ft.dropdown.Option(key=op['id'], text=op['nome']) for op in self.opcoes_label]
             + [ft.dropdown.Option(key='Eliminar', text='Eliminar')]
@@ -354,6 +395,7 @@ class campoAjustavel():
             value=self.resposta['dados_ajustaveis'][self.posicao].get('valor', ''),
             width=self.largura[1],
             text_style=ft.TextStyle(size=13),
+            bgcolor=bgcolor_aj,
             on_blur=self._atualizar_valor
         )
 
@@ -377,6 +419,15 @@ class campoAjustavel():
 
     def _atualizar_valor(self, e):
         self.resposta['dados_ajustaveis'][self.posicao]['valor'] = e.control.value
+        self.marcar_modificado()
+
+    def marcar_modificado(self):
+        self.valor_textfield.bgcolor = COR_MODIFICADO
+        self.valor_textfield.update()
+
+    def marcar_salvo(self):
+        self.valor_textfield.bgcolor = COR_NORMAL
+        self.valor_textfield.update()
 
     def _eliminar_confirmado(self, e):
         self.dialogo.open = False
@@ -415,14 +466,13 @@ class dadosFormulario():
             return 'SPG ABIO'
 
         if self.tipo == 'associado':
-            matriculas = self.page.cliente.table('rel_mat_asso').select('matricula').eq('associado_id', f"{self.id}").execute()
-            matriculas = [m['matricula'] for m in matriculas.data]
-            matriculas_texto = ' / '.join(matriculas)
+            matriculas = self.page.cliente.table('rel_mat_asso').select('matricula_id').eq('associado_id', f"{self.id}").execute()
+            matriculas = [m['matricula_id'] for m in matriculas.data]
 
-            cabecalho = self.page.cliente.table('vw_dados_com_associado').select('*').eq('matricula', matriculas[0]).execute()
+            cabecalho = self.page.cliente.table('vw_dados_com_associado').select('*').eq('id_matricula', matriculas[0]).execute()
             cabecalho = cabecalho.data[0]
-            cabecalho = f"SPG ABIO - {cabecalho['nucleo']} - {cabecalho['grupo']} - {matriculas_texto}"
-            return f'Detalhes do associado - {matriculas_texto}'
+            cabecalho = f"SPG ABIO - {cabecalho['nucleo']} - {cabecalho['grupo']} - {cabecalho['matricula']}"
+            return cabecalho
 
         elif self.tipo == 'uprod':
             escopo_id = self.page.cliente.table('escopo').select('id').eq('uprod_id', f"{self.id}").execute()
@@ -461,7 +511,11 @@ class baseFormulario():
         self.botoes = botoesFormulario(self.page, self.dados.resposta,                   # Botões
                         self.ver_janela_nrotulo,
                         self.atualizar_estrutura_de_campos)
-
+        # Lista plana com todas as instâncias que suportam marcar_salvo()
+        self.botoes.campos_ref = (
+            list(self.estrutura._campos.values()) +
+            self.estrutura._campos_ajustaveis
+        )
 
         # Configurar página
         self.page.title = 'SPG ABIO: ' + self.dados.titulo

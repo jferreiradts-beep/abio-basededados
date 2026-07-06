@@ -29,7 +29,11 @@ class quadroTabela():
 
     def abrir_formulario(self, e, x, matricula):
         self.page.voltar_dados['endereco'].append(self.page.route)
-        self.page.voltar_dados['dados_pagina'].append({'id': self.page.session.get("id")})
+        self.page.voltar_dados['dados_pagina'].append({
+            'grupo_dashboard_nucleo_id': self.page.session.get("grupo_dashboard_nucleo_id"),
+            'grupo_dashboard_grupo_id': self.page.session.get("grupo_dashboard_grupo_id"),
+            'id': self.page.session.get("grupo_dashboard_grupo_id")
+        })
         
         if matricula:
             self.page.session.set('id', x)
@@ -60,7 +64,7 @@ class quadroTabela():
 
     # ── linha da tabela ────────────────────────────────────────────
     def _montar_linha(self, item):
-        matricula = item.get('matricula', '0')
+        matricula = item.get('id_matricula', '0')
         escopo_id = item.get('id_escopo', '0')
         botoes = ft.Row([
             ft.ElevatedButton("M", width=30, on_click= lambda e, x=matricula: self.abrir_formulario(e, x, True)),
@@ -141,17 +145,11 @@ class linhaBotoes():
     def __init__(self, page, pai=None):
         self.page = page
         self.pai = pai
+        self.btn_imprimir = ft.ElevatedButton("Imprimir", width=100, on_click=lambda e: self.botoes_acoes('imprimir'))
+        self.btn_voltar = ft.ElevatedButton("Voltar", width=100, on_click=lambda e: self.botoes_acoes('voltar'))
 
     def botoes_acoes(self, acao):
-        if acao == 'editar':
-            self.page.voltar_dados['endereco'].append(self.page.route)
-            self.page.voltar_dados['dados_pagina'].append({
-                'id': self.page.session.get("id"),
-                'tipo': 'grupo' 
-                })
-            self.page.go('/formulario')
-
-        elif acao == 'imprimir':
+        if acao == 'imprimir':
             try:
                 from gerar_certificado import montarFichaGrupos
                 if self.pai:
@@ -185,9 +183,8 @@ class linhaBotoes():
                 border_radius=10,
                 padding=10,
                 content= ft.Row([
-                    ft.ElevatedButton("Detalhes", width=100, on_click=lambda e: self.botoes_acoes('editar')),
-                    ft.ElevatedButton("Imprimir", width=100, on_click=lambda e: self.botoes_acoes('imprimir')),
-                    ft.ElevatedButton("Voltar", width=100, on_click=lambda e: self.botoes_acoes('voltar')),
+                    self.btn_imprimir,
+                    self.btn_voltar,
                 ], alignment=ft.MainAxisAlignment.END, spacing=20)
             )
         ])
@@ -197,35 +194,117 @@ class linhaBotoes():
 class grupoBase():
     def __init__(self, page: ft.Page):
         self.page = page
-        self.dados = self.obter_dados()
+        self.dados = {'dados_gerais': {}, 'detalhe': []}
+        
+        self.dropdown_nucleo = ft.Dropdown(
+            label="Núcleo",
+            width=250,
+            on_change=self.ao_selecionar_nucleo
+        )
+        self.dropdown_grupo = ft.Dropdown(
+            label="Grupo",
+            width=250,
+            on_change=self.ao_selecionar_grupo
+        )
+        self.texto_coordenador = ft.Text("Coordenador: ", size=16, weight="bold")
+        
         self.montar_layout()
+        self.carregar_nucleos_e_restaurar()
+
+    def carregar_nucleos_e_restaurar(self):
+        resposta = self.page.cliente.table('nucleo').select('id, nome').order('nome').execute()
+        opcoes = [ft.dropdown.Option(key=str(n['id']), text=n['nome']) for n in resposta.data]
+        self.dropdown_nucleo.options = opcoes
+
+        # Restaurar estado se voltar para a página
+        saved_nucleo_id = self.page.avancar_dados.pop('nucleo_id', None)
+        if saved_nucleo_id:
+            self.dropdown_nucleo.value = str(saved_nucleo_id)
+            
+            resposta_grupos = self.page.cliente.table('grupo').select('id, nome').eq('nucleo_id', saved_nucleo_id).order('nome').execute()
+            opcoes_grupos = [ft.dropdown.Option(key=str(g['id']), text=g['nome']) for g in resposta_grupos.data]
+            self.dropdown_grupo.options = opcoes_grupos
+            
+            saved_grupo_id = self.page.avancar_dados.pop('grupo_id', None)
+            if saved_grupo_id:
+                self.dropdown_grupo.value = str(saved_grupo_id)
+                self.page.session.set("id", str(saved_grupo_id))
+                self.atualizar_dados()
+                self.linha_botoes_obj.btn_imprimir.visible = True
+        
+        self.dropdown_nucleo.update()
+        self.dropdown_grupo.update()
+        self.texto_coordenador.update()
+        if hasattr(self, 'linha_botoes_obj'):
+            self.linha_botoes_obj.btn_imprimir.update()
+
+    def ao_selecionar_nucleo(self, e):
+        nucleo_id = self.dropdown_nucleo.value
+        self.page.session.set("grupo_dashboard_nucleo_id", nucleo_id)
+        if nucleo_id:
+            resposta = self.page.cliente.table('grupo').select('id, nome').eq('nucleo_id', nucleo_id).order('nome').execute()
+            opcoes = [ft.dropdown.Option(key=str(g['id']), text=g['nome']) for g in resposta.data]
+            self.dropdown_grupo.options = opcoes
+            self.dropdown_grupo.value = None
+            self.dropdown_grupo.update()
+            
+            # Limpar dados
+            self.limpar_dados()
+        else:
+            self.dropdown_grupo.options = []
+            self.dropdown_grupo.value = None
+            self.dropdown_grupo.update()
+            self.limpar_dados()
+
+    def ao_selecionar_grupo(self, e):
+        grupo_id = self.dropdown_grupo.value
+        self.page.session.set("grupo_dashboard_grupo_id", grupo_id)
+        if grupo_id:
+            self.page.session.set("id", str(grupo_id))
+            self.atualizar_dados()
+            self.linha_botoes_obj.btn_imprimir.visible = True
+            self.linha_botoes_obj.btn_imprimir.update()
+        else:
+            self.limpar_dados()
+
+    def limpar_dados(self):
+        self.page.session.set("grupo_dashboard_grupo_id", None)
+        self.texto_coordenador.value = "Coordenador: "
+        self.texto_coordenador.update()
+        
+        self.dados = {'dados_gerais': {}, 'detalhe': []}
+        self.dados_tabela.dados = []
+        self.dados_tabela._atualizar()
+        
+        if hasattr(self, 'linha_botoes_obj'):
+            self.linha_botoes_obj.btn_imprimir.visible = False
+            self.linha_botoes_obj.btn_imprimir.update()
 
     def obter_dados(self):
-        dados = self.page.cliente.rpc('painel_do_grupo', {'p_grupo_id': self.page.session.get("id")}).execute()
+        grupo_id = self.page.session.get("id")
+        if not grupo_id:
+            return {'dados_gerais': {}, 'detalhe': []}
+        dados = self.page.cliente.rpc('painel_do_grupo', {'p_grupo_id': int(grupo_id)}).execute()
         return dados.data
 
     def montar_dados_gerais(self):
-        dados_gerais = self.dados['dados_gerais']
-        nome = ft.Row([
-            ft.Text(f"Nome: {dados_gerais['nome']}", size=20, weight="bold"),
-            ])
-        largura_dados = (900 - 20 * 2) / 3
+        outros_dados = ft.Row([
+            self.dropdown_nucleo,
+            self.dropdown_grupo,
+            self.texto_coordenador
+        ], spacing=20, alignment=ft.MainAxisAlignment.START, vertical_alignment=ft.CrossAxisAlignment.CENTER)
 
-        outros_dados = ft.Row([], spacing=20, alignment=ft.MainAxisAlignment.START)
-        for dado in ['nucleo', 'coordenador']:
-            outros_dados.controls.append(
-                ft.Container(
-                    width= largura_dados,
-                    height= 50,
-                    content= ft.Text(f"{dado.capitalize()}: {dados_gerais[dado]}"),
-                )
-            )
-        return ft.Column([nome, outros_dados])
+        return ft.Column([outros_dados], alignment=ft.MainAxisAlignment.CENTER)
 
     def atualizar_dados(self):
         # Atualiza os dados da tabela
         self.dados = self.obter_dados()
-        self.dados_tabela.dados = list(self.dados['detalhe'])
+        
+        coordenador = self.dados.get('dados_gerais', {}).get('coordenador') or 'Não definido'
+        self.texto_coordenador.value = f"Coordenador: {coordenador}"
+        self.texto_coordenador.update()
+        
+        self.dados_tabela.dados = list(self.dados.get('detalhe', []))
         self.dados_tabela._atualizar()
         
     def montar_layout(self):
@@ -242,7 +321,7 @@ class grupoBase():
                 width= 1000,
                 bgcolor=ft.Colors.GREY_200,
                 border_radius=10,
-                padding=10,
+                padding=20,
                 content= self.montar_dados_gerais(),
             ),
         ])
@@ -261,9 +340,10 @@ class grupoBase():
                 ),
         ])
 
-
         # 4️⃣ Botões
-        linha_botoes = linhaBotoes(self.page, self).montar_linha_botoes()
+        self.linha_botoes_obj = linhaBotoes(self.page, self)
+        self.linha_botoes = self.linha_botoes_obj.montar_linha_botoes()
+        self.linha_botoes_obj.btn_imprimir.visible = False
 
         # Adicionar à pagina
         self.page.add(
@@ -272,7 +352,7 @@ class grupoBase():
                     cabecalho,
                     dados_gerais,
                     tabela,
-                    linha_botoes],
+                    self.linha_botoes],
                     spacing=20,
                     alignment=ft.MainAxisAlignment.START,
                     horizontal_alignment=ft.CrossAxisAlignment.START
@@ -284,13 +364,14 @@ class grupoBase():
             )
         )
 
-def iniciar_dashboard_nucleos(id=21):
+def iniciar_dashboard_nucleos(id=None):
     def main(page: ft.Page):
         from escudo_supabase import login_supabase
         page.cliente = login_supabase()
-        page.session.set("id", id)
+        if id:
+            page.session.set("id", str(id))
         page.avancar_dados = {}
-        page.voltar_dados = {}
+        page.voltar_dados = {'endereco': [], 'dados_pagina': []}
 
         grupoBase(page)
     return main

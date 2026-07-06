@@ -89,10 +89,12 @@ class janelaNovoAssociado:
         if len(cpf) not in (11, 14):
             return
 
+        print(self.page.session.get('id'))
+
         resposta = self.page.cliente.rpc('vincular_associado', {
             'p_nome': self.campos[0].value, 
             'p_cpf': cpf,
-            'p_matricula': self.page.session.get('id')
+            'p_matricula_id': int(self.page.session.get('id'))
             }).execute()
 
         # Fechar a janela
@@ -120,17 +122,12 @@ class botoesColMatricula:
         self.botoes = ft.Row(
             [
                 ft.ElevatedButton("Novo associado", width=150, on_click=lambda e: self.novo_associado()),
-                ft.ElevatedButton("Novo escopo", width=150, on_click=lambda e: self.novo_escopo()),
                 ft.ElevatedButton("Voltar", width=150, on_click=lambda e: self.voltar()),
             ], spacing=30
         )
 
     def novo_associado(self):
         janelaNovoAssociado(self.page, self.ir_para_formulario)
-
-    def novo_escopo(self):
-        self.page.avancar_dados['matricula'] = self.page.session.get('id')
-        self.ir_para_formulario('escopo', '0')
 
     def voltar(self):
         retorno = self.page.voltar_dados['endereco'][-1] if self.page.voltar_dados['endereco'] else '/dashboard'
@@ -151,9 +148,7 @@ class colunaMatricula:
         self.dados = self.baixar_dados()
 
         self.selecionado = {
-            'associado': None,
-            'escopo': None,
-            'uprod': None
+            'associado': None
         }
     
     def baixar_dados(self):
@@ -171,22 +166,15 @@ class colunaMatricula:
         return
 
     def selecionar(self, tipo, id_selecionado):
-        if tipo in ['associado', 'escopo', 'uprod']:
+        if tipo in ['associado']:
             self.selecionado[tipo] = id_selecionado
         else:
             self.selecionado = {
-                'associado': None,
-                'escopo': None,
-                'uprod': None
+                'associado': None
             }
 
         self.montar_lista_associados()
-        self.montar_lista_escopos()
-        self.montar_lista_uprod()
-    
         self.lista_associados.update()
-        self.lista_escopos.update()
-        self.lista_uprod.update()
 
     def montar_lista_associados(self):
         self.lista_associados.controls.clear()
@@ -220,44 +208,6 @@ class colunaMatricula:
                 on_double_tap=lambda e, id_selecionado=idx: self.ir_para_formulario('associado', id_selecionado)
             )
             self.lista_associados.controls.append(item)
-    
-    def montar_lista_escopos(self):
-        self.lista_escopos.controls.clear()
-        for escopo in self.dados['escopos']:
-            idx = escopo['id']
-            nome = ft.Text(escopo['nome'], size=14, width=300,
-                            style=ft.TextStyle(
-                                weight=ft.FontWeight.BOLD if idx == self.selecionado['escopo'] else ft.FontWeight.NORMAL,
-                                color=ft.Colors.GREEN_900 if idx == self.selecionado['escopo'] else ft.Colors.BLACK,
-                                decoration=ft.TextDecoration.UNDERLINE if idx == self.selecionado['escopo'] else ft.TextDecoration.NONE))
-            item = ft.GestureDetector(
-                content=ft.Container(
-                    content=ft.Row([nome]),
-                    padding=0
-                ),
-                on_tap=lambda e, id_selecionado=idx: self.selecionar('escopo', id_selecionado),
-                on_double_tap=lambda e, id_selecionado=idx: self.ir_para_formulario('escopo', id_selecionado)
-            )
-            self.lista_escopos.controls.append(item)
-
-    def montar_lista_uprod(self):
-        self.lista_uprod.controls.clear()
-        for uprod in self.dados['uprods']:
-            idx = uprod['id']
-            nome = ft.Text(uprod['nome'], size=14, width=300,
-                            style=ft.TextStyle(
-                                weight=ft.FontWeight.BOLD if idx == self.selecionado['uprod'] else ft.FontWeight.NORMAL,
-                                color=ft.Colors.GREEN_900 if idx == self.selecionado['uprod'] else ft.Colors.BLACK,
-                                decoration=ft.TextDecoration.UNDERLINE if idx == self.selecionado['uprod'] else ft.TextDecoration.NONE))
-            item = ft.GestureDetector(
-                content=ft.Container(
-                    content=ft.Row([nome]),
-                    padding=0
-                ),
-                on_tap=lambda e, id_selecionado=idx: self.selecionar('uprod', id_selecionado),
-                on_double_tap=lambda e, id_selecionado=idx: self.ir_para_formulario('uprod', id_selecionado)
-            )
-            self.lista_uprod.controls.append(item)
        
     def montar_layout(self):
         # Linha de matrícula
@@ -285,14 +235,6 @@ class colunaMatricula:
         self.lista_associados = ft.ListView(expand=True, spacing=5, padding=5)
         self.montar_lista_associados()
 
-        # Linha lista de escopos
-        self.lista_escopos = ft.ListView(expand=True, spacing=5, padding=5)
-        self.montar_lista_escopos()
-
-        # Linha lista de uprod
-        self.lista_uprod = ft.ListView(expand=True, spacing=5, padding=5)
-        self.montar_lista_uprod()
-
         # Linha de botoes
         self.botoes = botoesColMatricula(self.page, self.ir_para_formulario)
 
@@ -305,31 +247,8 @@ class colunaMatricula:
                 ft.Container(
                     content=self.lista_associados,
                     width=560,
-                    height=100,
+                    height=260,
                 ),
-                ft.Divider(),
-                ft.Row([
-                    ft.Container(
-                        content=ft.Column(
-                            [
-                                ft.Text("Escopos", size=20, weight="bold"),
-                                self.lista_escopos
-                            ],
-                        width=200,
-                        height=130
-                        )
-                    ),
-                    ft.Container(
-                        content=ft.Column(
-                            [
-                                ft.Text("Unidades de produção", size=20, weight="bold"),
-                                self.lista_uprod
-                            ],
-                        width=350,
-                        height=130
-                        )
-                    )
-                ]),
                 ft.Divider(),
                 self.botoes.botoes
             ]
@@ -350,9 +269,7 @@ class MatriculaBase:
     def criar_menu(self):
         menu = ft.PopupMenuButton(
             icon=ft.Icons.MENU,
-            items=[
-                ft.PopupMenuItem(text="Eliminar matrícula", on_click=lambda e: Eliminar(self.page))
-            ]
+            items=[]
         )
         return menu
 

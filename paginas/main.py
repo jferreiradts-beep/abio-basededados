@@ -8,6 +8,7 @@ from pag_login import LoginBase
 from pag_recuperar_senha import RecuperarSenhaBase
 from grupo_dashboard import grupoBase
 from pag_configuracoes import ConfiguracoesBase
+from relatorio_financeiro import relatorioFinanceiroBase
 
 def main(page: ft.Page):
     # Inicializa cliente sem logar automaticamente (agora o login é na tela)
@@ -59,6 +60,8 @@ def main(page: ft.Page):
                 baseProdutos(page)
             elif page.route == "/painel_grupo":
                 grupoBase(page)
+            elif page.route == "/relatorio_financeiro":
+                relatorioFinanceiroBase(page)
             elif page.route == "/recuperar-senha" or page.route.startswith("/recuperar-senha?"):
                 RecuperarSenhaBase(page)
             elif page.route == "/configuracoes":
