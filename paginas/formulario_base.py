@@ -260,11 +260,7 @@ class campoFixo():
         idx = self.resposta['campos_fixos'][self.campo]['id']
         campo_consulta = self.resposta['campos_fixos'][self.campo]['filtro']
         p_filtro = self.resposta['dados_fixos'].get(campo_consulta, None)
-        
-        # Previne erro no servidor caso campo_filtro não tenha valor
-        if p_filtro == "" or p_filtro == None:
-            p_filtro = 0
-        
+
         opcoes = self.page.cliente.rpc('obter_opcoes', {'idx': idx, 'p_filtro': p_filtro}).execute()
         return opcoes.data
 
