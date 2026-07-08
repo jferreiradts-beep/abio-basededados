@@ -481,15 +481,6 @@ class menuEscopo():
         except (ValueError, TypeError):
             return valor or ''
 
-   
-    def obter_tipo_escopo(self):
-        """Encontra genericamente o campo cujo rótulo é 'Tipo de escopo'
-        e devolve o seu valor a partir de dados_fixos."""
-        for chave, meta in self.dados.get('campos_fixos', {}).items():
-            if meta.get('rotulo', '').strip().lower() == 'tipo de escopo':
-                return self.dados['dados_fixos'].get(chave)
-        return None
-
     def ver_registro_acontecimentos(self, e):
         id = self.page.session.get('id')
         verAcontecimentos(self.page, id, ao_salvar=self.atualizar_dados_basicos)
@@ -502,7 +493,16 @@ class menuEscopo():
         self.txt_ultima_atividade.update()
         
     def visualizar_produtos(self, e):
-        verProdutos(self.page, tipo_escopo=self.obter_tipo_escopo())
+        tipo_escopo = self.dados['dados_fixos'].get('nome')
+        if tipo_escopo:
+            try:
+                res = self.page.cliente.table('tipo_escopo').select('nome').eq('id', int(tipo_escopo)).execute()
+                if res.data:
+                    self.page.session.set("nome_escopo", res.data[0]['nome'])
+            except Exception as err:
+                print(f"Erro ao buscar nome do escopo: {err}")
+        verProdutos(self.page, tipo_escopo=tipo_escopo)
+
 
     def editar_nomes_certificado(self, e):
         nomesCertificado(self.page)

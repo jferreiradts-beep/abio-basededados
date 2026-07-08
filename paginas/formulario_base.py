@@ -452,50 +452,50 @@ class dadosFormulario():
 
         if self.tipo == 'uprod':
             self.titulo = f'Detalhe da Unidade de Produção'
-            self.subtitulo = self.obter_subtitulo()
         else:
             self.titulo = f'Detalhe d{self.tipo[-1]} {self.tipo.capitalize()}'
-            self.subtitulo = self.obter_subtitulo()
 
     def baixar_dados(self):
         dados = self.page.cliente.rpc('preencher_formulario', {'p_tabela': self.tipo, 'p_registro': self.id}).execute()
-        return dados.data
+        dados = dados.data
+        dados['subtitulo'] = self.baixar_subtitulo()
+        return dados
 
-    def obter_subtitulo(self):
-        if self.id == '0' or self.tipo == 'nucleo':
-            return 'SPG ABIO'
+    def baixar_subtitulo(self):
+        subtitulo = 'SPG ABIO'
+
+        if self.id == '0':
+            return subtitulo + ' - Novo(a) ' + self.tipo
 
         if self.tipo == 'associado':
-            matriculas = self.page.cliente.table('rel_mat_asso').select('matricula_id').eq('associado_id', f"{self.id}").execute()
-            matriculas = [m['matricula_id'] for m in matriculas.data]
+            id_matricula = self.page.cliente.table('rel_mat_asso').select('matricula_id').eq('associado_id', self.id).execute()
+            id_matricula = id_matricula.data[0]['matricula_id']
 
-            cabecalho = self.page.cliente.table('vw_dados_com_associado').select('*').eq('id_matricula', matriculas[0]).execute()
-            cabecalho = cabecalho.data[0]
-            cabecalho = f"SPG ABIO - {cabecalho['nucleo']} - {cabecalho['grupo']} - {cabecalho['matricula']}"
-            return cabecalho
+            dados = self.page.cliente.table('vw_dados_com_associado').select('*').eq('id_matricula', id_matricula).execute()
+            dados = dados.data[0]
 
-        elif self.tipo == 'uprod':
-            escopo_id = self.page.cliente.table('escopo').select('id').eq('uprod_id', f"{self.id}").execute()
-            escopo_id = escopo_id.data[0]['id']
-
-            cabecalho = self.page.cliente.table('vw_dados_com_associado').select('*').eq('id_escopo', escopo_id).execute()
-            cabecalho = cabecalho.data[0]
-            cabecalho = f"SPG ABIO - {cabecalho['nucleo']} - {cabecalho['grupo']} - {cabecalho['matricula']}"
-            return cabecalho
-
-        elif self.tipo == 'grupo':
-            cabecalho = self.page.cliente.table('vw_dados_com_associado').select('*').eq('id_grupo', self.id).execute()
-            cabecalho = cabecalho.data[0]
-            cabecalho = f"SPG ABIO - {cabecalho['nucleo']}"
-            return cabecalho
-
-        elif self.tipo == 'escopo':
-            cabecalho = self.page.cliente.table('vw_dados_com_associado').select('*').eq('id_escopo', self.id).execute()
-            cabecalho = cabecalho.data[0]
-            cabecalho = f"SPG ABIO - {cabecalho['nucleo']} - {cabecalho['grupo']} - {cabecalho['matricula']}"
-            return cabecalho
+            for k, v in dados.items():
+                if k[:3] == 'id_' or k == 'primeiro_associado':
+                    continue
+                else:
+                    subtitulo += ' - ' + v
+                if k == 'matricula':
+                    break
         else:
-            return None
+            dados = self.page.cliente.table('vw_dados_com_associado').select('*').eq(f'id_{self.tipo}', self.id).execute()
+            dados = dados.data[0]
+
+            for k, v in dados.items():
+                if k == self.tipo:
+                    break
+                if k[:3] == 'id_' or k == 'primeiro_associado':
+                    continue
+                else:
+                    subtitulo += ' - ' + v
+
+        return subtitulo
+        
+
             
 
 class baseFormulario():
@@ -551,7 +551,7 @@ class baseFormulario():
                 border_radius=10,
                 padding=20,
                 content=ft.Column([
-                    ft.Text(self.dados.subtitulo, weight="bold"),
+                    ft.Text(self.dados.resposta['subtitulo'], weight="bold"),
                     ft.Text(self.dados.titulo, size=24, weight="bold"),
                     ft.Divider(),
                     self.estrutura.area_rolavel,
