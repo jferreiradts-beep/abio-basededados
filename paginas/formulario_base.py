@@ -1,4 +1,5 @@
 import flet as ft
+import asyncio
 import pandas as pd
 import os
 from formulario_coluna2 import funcao_menu_lateral  
@@ -221,11 +222,14 @@ class campoFixo():
         novo_registo = not id_val or str(id_val) in ('0', '', 'None')
         bgcolor_ini = COR_MODIFICADO if novo_registo else COR_NORMAL
 
+        self._precisa_carregar = False  # flag para lazy load
+
         if self.resposta['campos_fixos'][self.campo].get('opcoes'):
-            opcoes_raw = self.consultar_opcoes()
-            opcoes_lista = [ft.dropdown.Option(key=str(opcao['id']), text=opcao['opcao']) for opcao in opcoes_raw]
+            self._precisa_carregar = True
+            self._valor_inicial_dropdown = str(valor_inicial) if valor_inicial else None
             self._entrada = ft.Dropdown(
-                value=str(valor_inicial) if valor_inicial else None, options=opcoes_lista,
+                value=None, options=[],   # começa vazio; preenchido em lazy load
+                disabled=True,
                 width=self.largura[1], text_style=ft.TextStyle(size=13), menu_height=300,
                 on_change=lambda e: self.atualizar_campo(e.control.value))
         else:
@@ -265,6 +269,19 @@ class campoFixo():
         
         opcoes = self.page.cliente.rpc('obter_opcoes', {'idx': idx, 'p_filtro': p_filtro}).execute()
         return opcoes.data
+
+    def carregar_opcoes_lazy(self):
+        """Busca as opções via RPC e actualiza o Dropdown. Chamado em thread separada."""
+        try:
+            opcoes_raw = self.consultar_opcoes()
+            self._entrada.options = [
+                ft.dropdown.Option(key=str(op['id']), text=op['opcao']) for op in opcoes_raw
+            ]
+            self._entrada.value = self._valor_inicial_dropdown
+            self._entrada.disabled = False
+            self._entrada.update()
+        except Exception as ex:
+            print(f"[lazy] Erro ao carregar opções de '{self.campo}': {ex}")
 
 class campoAjustavel():
     """Campo ajustável (label via Dropdown + valor via TextField).
@@ -448,6 +465,19 @@ class estruturaDeCampos():
 
         # Limpar avançar dados
         self.page.avancar_dados = {}
+
+        # Lazy load: carregar opções de todos os dropdowns em paralelo
+        campos_a_carregar = [inst for inst in self._campos.values() if inst._precisa_carregar]
+        if campos_a_carregar:
+            self.page.run_task(self._carregar_opcoes_sequencialmente, campos_a_carregar)
+
+    async def _carregar_opcoes_sequencialmente(self, campos):
+        """Carrega as opções dos dropdowns em sequência.
+        O cliente HTTP/2 do Supabase não é thread-safe — carregar em paralelo
+        corrompe os streams. A UI já está visível; os dropdowns preenchem um a um.
+        """
+        for campo in campos:
+            await asyncio.to_thread(campo.carregar_opcoes_lazy)
 
 
 class dadosFormulario():
