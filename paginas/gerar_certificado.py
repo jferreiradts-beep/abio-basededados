@@ -9,6 +9,11 @@ from io import BytesIO
 from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
 import unicodedata
+import os
+
+# Diretório base do projeto (pai do diretório deste script)
+_DIR_BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+_DIR_MAPA = os.path.join(_DIR_BASE, 'mapa')
 
 from formatar_campos import formatar_cpf_cnpj
 
@@ -227,10 +232,10 @@ class montarCertificado():
         for i, pagina in enumerate(pdf_canvas.pages):
             if i == 0:
                 # Criar capa
-                base = PdfReader("mapa/certificado_capa.pdf")
+                base = PdfReader(os.path.join(_DIR_MAPA, "certificado_capa.pdf"))
                 base = base.pages[0]
             else:
-                base = PdfReader("mapa/certificado_produtos.pdf")
+                base = PdfReader(os.path.join(_DIR_MAPA, "certificado_produtos.pdf"))
                 base = base.pages[0]
 
             base.merge_page(pagina)
@@ -382,7 +387,7 @@ class montarFRI():
 
         writer = PdfWriter()
         for i, produto in enumerate(pdf_produtos.pages):
-            base_fri = PdfReader("mapa/modelo_FRI.pdf").pages[0]
+            base_fri = PdfReader(os.path.join(_DIR_MAPA, "modelo_FRI.pdf")).pages[0]
             base_fri.merge_page(produto)
             base_fri.merge_page(pdf_num.pages[i])
             writer.add_page(base_fri)
