@@ -67,14 +67,15 @@ class botoesFormulario():
         self.atualizar_estrutura_de_campos = atualizar_estrutura_de_campos
 
         self.botoes = ft.Row([
-                ft.ElevatedButton("Novo campo", width=150, on_click=self.novo_campo),
-                ft.ElevatedButton("Novo rótulo", width=150, on_click=self.novo_rotulo),
-                ft.ElevatedButton("Voltar", width=150, on_click=self.voltar),
-                ft.ElevatedButton("Salvar", width=150, on_click=self.salvar)
-            ], spacing=46)
+                ft.ElevatedButton("Novo campo", width=130, on_click=self.novo_campo),
+                ft.ElevatedButton("Novo rótulo", width=130, on_click=self.novo_rotulo),
+                ft.ElevatedButton("Excluir", width=130, disabled=True, on_click= lambda e: print('excluir')),
+                ft.ElevatedButton("Salvar", width=130, on_click=self.salvar),
+                ft.ElevatedButton("Voltar", width=130, on_click=self.voltar)
+            ], spacing=20)
 
     def novo_campo(self, e):
-        self.resposta['dados_ajustaveis'].append({'campo_id': '', 'valor': ''})
+        self.resposta['dados_ajustaveis'].append({'campo_id': '', 'valor': '', 'novo': True})
         self.atualizar_estrutura_de_campos()
 
     def novo_rotulo(self, e):
@@ -259,10 +260,118 @@ class campoFixo():
     def consultar_opcoes(self):
         idx = self.resposta['campos_fixos'][self.campo]['id']
         campo_consulta = self.resposta['campos_fixos'][self.campo]['filtro']
-        p_filtro = self.resposta['dados_fixos'].get(campo_consulta, None)
-
+        p_filtro = self.resposta['dados_fixos'].get(campo_consulta)
+        p_filtro = 0 if p_filtro == '' else p_filtro
+        
         opcoes = self.page.cliente.rpc('obter_opcoes', {'idx': idx, 'p_filtro': p_filtro}).execute()
         return opcoes.data
+
+class campoAjustavel():
+    """Campo ajustável (label via Dropdown + valor via TextField).
+    Inclui a opção 'Eliminar' com diálogo de confirmação.
+    Todos os valores são texto puro, sem máscara.
+    """
+    def __init__(self, page, resposta, posicao, opcoes_label, atualizar_estrutura_de_campos, largura=(150, 200)):
+        self.page = page
+        self.resposta = resposta
+        self.posicao = posicao
+        self.opcoes_label = opcoes_label
+        self.atualizar_estrutura_de_campos = atualizar_estrutura_de_campos
+        self.largura = largura
+
+        self.dialogo = ft.AlertDialog(
+            title=ft.Text("Confirmar eliminação"),
+            content=ft.Text(""),  # preenchido em _atualizar_label
+            actions=[
+                ft.TextButton("Cancelar", on_click=self._eliminar_cancelado),
+                ft.TextButton("Eliminar", on_click=self._eliminar_confirmado),
+            ]
+        )
+
+        self.campo_ui = self._criar_campo()
+
+    def _criar_campo(self):
+        # Cor inicial igual à dos campos fixos
+        id_val = self.resposta['dados_fixos'].get('id')
+        novo_registo = not id_val or str(id_val) in ('0', '', 'None')
+        
+        # Um campo ajustável começa com a cor modificada se for um novo registro
+        # OU se for um campo ajustável especificamente adicionado na sessão atual (novo = True)
+        dado_aj = self.resposta['dados_ajustaveis'][self.posicao]
+        eh_campo_novo = dado_aj.get('novo', False)
+        
+        bgcolor_aj = COR_MODIFICADO if (novo_registo or eh_campo_novo) else COR_NORMAL
+
+        opcoes_lista = (
+            [ft.dropdown.Option(key=op['id'], text=op['nome']) for op in self.opcoes_label]
+            + [ft.dropdown.Option(key='Eliminar', text='Eliminar')]
+        )
+
+        self.label_dropdown = ft.Dropdown(
+            value=self.resposta['dados_ajustaveis'][self.posicao].get('campo_id'),
+            options=opcoes_lista,
+            hint_text='Selecione',
+            width=self.largura[0],
+            text_style=ft.TextStyle(size=13, weight="bold"),
+            border=ft.InputBorder.NONE,
+            border_radius=0,
+            on_change=self._atualizar_label
+        )
+
+        self.valor_textfield = ft.TextField(
+            value=self.resposta['dados_ajustaveis'][self.posicao].get('valor', ''),
+            width=self.largura[1],
+            text_style=ft.TextStyle(size=13),
+            bgcolor=bgcolor_aj,
+            on_blur=self._atualizar_valor
+        )
+
+        return ft.Row([self.label_dropdown, self.valor_textfield],
+                      alignment=ft.MainAxisAlignment.CENTER, spacing=10)
+
+    def _atualizar_label(self, e):
+        if e.control.value == 'Eliminar':
+            campo_id = self.resposta['dados_ajustaveis'][self.posicao]['campo_id']
+            nome_campo = next(
+                (op['nome'] for op in self.opcoes_label if op['id'] == campo_id),
+                'este campo'
+            )
+            self.dialogo.content = ft.Text(f"Tem a certeza que deseja eliminar o campo \u00ab{nome_campo}\u00bb?")
+            if self.dialogo not in self.page.overlay:
+                self.page.overlay.append(self.dialogo)
+            self.dialogo.open = True
+            self.page.update()
+        else:
+            self.resposta['dados_ajustaveis'][self.posicao]['campo_id'] = e.control.value
+            self.marcar_modificado()
+
+    def _atualizar_valor(self, e):
+        self.resposta['dados_ajustaveis'][self.posicao]['valor'] = e.control.value
+        self.marcar_modificado()
+
+    def marcar_modificado(self):
+        self.valor_textfield.bgcolor = COR_MODIFICADO
+        self.valor_textfield.update()
+
+    def marcar_salvo(self):
+        self.valor_textfield.bgcolor = COR_NORMAL
+        self.valor_textfield.update()
+        # Limpar a tag de novo quando for salvo
+        if 'novo' in self.resposta['dados_ajustaveis'][self.posicao]:
+            self.resposta['dados_ajustaveis'][self.posicao]['novo'] = False
+
+    def _eliminar_confirmado(self, e):
+        self.dialogo.open = False
+        self.resposta['dados_ajustaveis'].pop(self.posicao)
+        self.atualizar_estrutura_de_campos()
+        self.page.update()
+
+    def _eliminar_cancelado(self, e):
+        self.dialogo.open = False
+        self.label_dropdown.value = self.resposta['dados_ajustaveis'][self.posicao]['campo_id']
+        self.label_dropdown.update()
+        self.page.update()
+
 
 class estruturaDeCampos():
     def __init__(self, page, resposta, atualizar_estrutura_de_campos):
@@ -339,103 +448,6 @@ class estruturaDeCampos():
 
         # Limpar avançar dados
         self.page.avancar_dados = {}
-
-
-class campoAjustavel():
-    """Campo ajustável (label via Dropdown + valor via TextField).
-    Inclui a opção 'Eliminar' com diálogo de confirmação.
-    Todos os valores são texto puro, sem máscara.
-    """
-    def __init__(self, page, resposta, posicao, opcoes_label, atualizar_estrutura_de_campos, largura=(150, 200)):
-        self.page = page
-        self.resposta = resposta
-        self.posicao = posicao
-        self.opcoes_label = opcoes_label
-        self.atualizar_estrutura_de_campos = atualizar_estrutura_de_campos
-        self.largura = largura
-
-        self.dialogo = ft.AlertDialog(
-            title=ft.Text("Confirmar eliminação"),
-            content=ft.Text(""),  # preenchido em _atualizar_label
-            actions=[
-                ft.TextButton("Cancelar", on_click=self._eliminar_cancelado),
-                ft.TextButton("Eliminar", on_click=self._eliminar_confirmado),
-            ]
-        )
-
-        self.campo_ui = self._criar_campo()
-
-    def _criar_campo(self):
-        # Cor inicial igual à dos campos fixos
-        id_val = self.resposta['dados_fixos'].get('id')
-        novo_registo = not id_val or str(id_val) in ('0', '', 'None')
-        bgcolor_aj = COR_MODIFICADO if novo_registo else COR_NORMAL
-
-        opcoes_lista = (
-            [ft.dropdown.Option(key=op['id'], text=op['nome']) for op in self.opcoes_label]
-            + [ft.dropdown.Option(key='Eliminar', text='Eliminar')]
-        )
-
-        self.label_dropdown = ft.Dropdown(
-            value=self.resposta['dados_ajustaveis'][self.posicao].get('campo_id'),
-            options=opcoes_lista,
-            hint_text='Selecione',
-            width=self.largura[0],
-            text_style=ft.TextStyle(size=13, weight="bold"),
-            border=ft.InputBorder.NONE,
-            border_radius=0,
-            on_change=self._atualizar_label
-        )
-
-        self.valor_textfield = ft.TextField(
-            value=self.resposta['dados_ajustaveis'][self.posicao].get('valor', ''),
-            width=self.largura[1],
-            text_style=ft.TextStyle(size=13),
-            bgcolor=bgcolor_aj,
-            on_blur=self._atualizar_valor
-        )
-
-        return ft.Row([self.label_dropdown, self.valor_textfield],
-                      alignment=ft.MainAxisAlignment.CENTER, spacing=10)
-
-    def _atualizar_label(self, e):
-        if e.control.value == 'Eliminar':
-            campo_id = self.resposta['dados_ajustaveis'][self.posicao]['campo_id']
-            nome_campo = next(
-                (op['nome'] for op in self.opcoes_label if op['id'] == campo_id),
-                'este campo'
-            )
-            self.dialogo.content = ft.Text(f"Tem a certeza que deseja eliminar o campo \u00ab{nome_campo}\u00bb?")
-            if self.dialogo not in self.page.overlay:
-                self.page.overlay.append(self.dialogo)
-            self.dialogo.open = True
-            self.page.update()
-        else:
-            self.resposta['dados_ajustaveis'][self.posicao]['campo_id'] = e.control.value
-
-    def _atualizar_valor(self, e):
-        self.resposta['dados_ajustaveis'][self.posicao]['valor'] = e.control.value
-        self.marcar_modificado()
-
-    def marcar_modificado(self):
-        self.valor_textfield.bgcolor = COR_MODIFICADO
-        self.valor_textfield.update()
-
-    def marcar_salvo(self):
-        self.valor_textfield.bgcolor = COR_NORMAL
-        self.valor_textfield.update()
-
-    def _eliminar_confirmado(self, e):
-        self.dialogo.open = False
-        self.resposta['dados_ajustaveis'].pop(self.posicao)
-        self.atualizar_estrutura_de_campos()
-        self.page.update()
-
-    def _eliminar_cancelado(self, e):
-        self.dialogo.open = False
-        self.label_dropdown.value = self.resposta['dados_ajustaveis'][self.posicao]['campo_id']
-        self.label_dropdown.update()
-        self.page.update()
 
 
 class dadosFormulario():
@@ -529,6 +541,12 @@ class baseFormulario():
 
     def atualizar_estrutura_de_campos(self):
         self.estrutura.construir_area_rolavel()
+        # Atualizar a lista de referências dos campos nos botões, caso a classe já tenha inicializado botoes
+        if hasattr(self, 'botoes'):
+            self.botoes.campos_ref = (
+                list(self.estrutura._campos.values()) +
+                self.estrutura._campos_ajustaveis
+            )
         self.estrutura.area_rolavel.update()
 
     def construir_layout(self):

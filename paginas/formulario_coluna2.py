@@ -537,6 +537,7 @@ class menuEscopo():
             ft.Row([ft.Text('Ficha de rastrabilidade individual:', width=250),
                     ft.ElevatedButton('Ok', on_click=self.ficha_rastrabilidade_individual, width=50, height=30)],
                     vertical_alignment=ft.CrossAxisAlignment.CENTER),
+            ft.Row([ft.Text('')]),
             ft.Divider(),
             ft.Text('Dados básicos:', size=16, weight="bold"),
             ft.Row([ft.Text('Validade:'), self.txt_validade], spacing=10),
