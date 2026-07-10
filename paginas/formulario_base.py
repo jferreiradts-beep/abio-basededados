@@ -432,7 +432,7 @@ class estruturaDeCampos():
         # Se filtro != 'id', este campo depende do valor de outro campo
         for campo_nome, inst in self._campos.items():
             filtro = self.resposta['campos_fixos'].get(campo_nome, {}).get('filtro')
-            if filtro and filtro != 'id' and filtro in self._campos:
+            if filtro and filtro != 'id' and filtro in self._campos and filtro != campo_nome:
                 self._campos[filtro].registar_dependente(inst)
 
         self.area_rolavel.controls = [
