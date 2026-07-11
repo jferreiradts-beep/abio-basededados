@@ -3,6 +3,7 @@ CREATE OR REPLACE FUNCTION public.obter_dados_escopo(p_escopo_id integer)
  LANGUAGE plpgsql
 AS $function$
 DECLARE
+    v_matricula_id INTEGER;
     v_matricula TEXT;
     v_json JSON;
     v_nome_uprod TEXT;
@@ -17,16 +18,18 @@ BEGIN
     --------------------------------------------------------------------
     -- 1. Buscar dados básicos do escopo + unidade de produção + tipo
     --------------------------------------------------------------------
-    SELECT 
-        e.matricula,
+    SELECT
+        m.id,
+        m.nome,
         u.nome,
         u.endereco,
-        u.municipio,
-        u.estado,
+        mun.nome,
+        est.nome,
         te.nome,
         te.abreviatura,
         te.mensagem
     INTO 
+        v_matricula_id,
         v_matricula,
         v_nome_uprod,
         v_endereco,
@@ -37,7 +40,10 @@ BEGIN
         v_mensagem
     FROM escopo e
     JOIN uprod u ON u.id = e.uprod_id
-    JOIN tipo_escopo te ON te.id = e.nome   -- conforme sua observação
+    JOIN matricula m ON m.id = u.matricula_id
+    JOIN municipios mun ON mun.id = u.matricula_id
+    JOIN estados est ON est.id = u.estado_id
+    JOIN tipo_escopo te ON te.id = e.nome
     WHERE e.id = p_escopo_id;
 
     --------------------------------------------------------------------
@@ -70,7 +76,7 @@ BEGIN
     INTO v_json
     FROM rel_mat_asso r
     JOIN associado a ON a.id = r.associado_id
-    WHERE r.matricula = v_matricula;
+    WHERE r.matricula_id = v_matricula_id;
 
     --------------------------------------------------------------------
     -- 4. Retornar tudo em um único JSON

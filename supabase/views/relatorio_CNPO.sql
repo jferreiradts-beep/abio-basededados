@@ -1,3 +1,6 @@
+--------------------------------------
+-- CONSTRIUIR O RELATÓRIO CNPO MAPA --
+--------------------------------------
 DROP VIEW IF EXISTS vw_mapa_mapa;
 
 CREATE VIEW vw_mapa_mapa AS
@@ -15,8 +18,10 @@ WITH escopo_associado AS (
         e.id          AS escopo_id,
         rma.associado_id
     FROM escopo e
+    JOIN uprod u
+      ON u.id = e.uprod_id
     JOIN rel_mat_asso rma
-      ON rma.matricula = e.matricula
+      ON rma.matricula_id = u.matricula_id
     WHERE NOT EXISTS (
         SELECT 1
         FROM rel_ass_esc rae2
@@ -34,7 +39,6 @@ ultimo_acontecimento_ativo AS (
     FROM acontecimentos a
     JOIN tipo_acontecimento ta
       ON ta.id = a.tipo_id
-    -- ignorar acontecimentos com ordem = 999 na definição de “último”
     WHERE ta.ordem <> 999
 ),
 ultima_emissao_certificado AS (
@@ -42,7 +46,7 @@ ultima_emissao_certificado AS (
         a.escopo_id,
         MAX(a.data) AS data_ultima_emissao
     FROM acontecimentos a
-    WHERE a.tipo_id = 1  -- certificado
+    WHERE a.tipo_id = 1
     GROUP BY a.escopo_id
 ),
 escopo_valido AS (
@@ -80,12 +84,11 @@ atividades_por_escopo AS (
     GROUP BY ag.escopo_id
 )
 SELECT
-    -- colunas fixas / derivadas
     'OPAC' AS "Tipo de entidade",
     'ASSOCIAÇÃO DE AGRICULTORES BIOLÓGICOS DO ESTADO DO RIO DE JANEIRO' AS "Entidade",
     'BRASIL' AS "Pais",
-    u.estado AS "UF",
-    u.municipio AS "Cidade",
+    est.nome AS "UF",
+    mun.nome       AS "Cidade",
     'ATIVO' AS "Situação CNPO",
 
     CASE
@@ -103,7 +106,7 @@ SELECT
           substr(asso.cpf,13,2)
 
       ELSE asso.cpf
-  END AS "CPF / CNPJ / NIF",
+    END AS "CPF / CNPJ / NIF",
 
     asso.nome AS "Nome do produtor",
     te.nome AS "Escopo",
@@ -116,8 +119,12 @@ JOIN associado asso
   ON asso.id = ea.associado_id
 JOIN uprod u
   ON u.id = e.uprod_id
+JOIN estados est
+  ON est.id = u.estado_id
+JOIN municipios mun 
+  ON mun.id = u.municipio_id  
 JOIN tipo_escopo te
-  ON te.id = e.nome  -- escopo.nome é FK para tipo_escopo.id
+  ON te.id = e.nome
 JOIN ultimo_acontecimento_ativo ua
   ON ua.escopo_id = e.id
  AND ua.rn = 1
@@ -126,5 +133,4 @@ JOIN escopo_valido ev
 LEFT JOIN atividades_por_escopo ae
   ON ae.escopo_id = e.id
 WHERE ua.situacao = 'Ativo'
-  -- validade não vencida há mais de 30 dias
   AND ev.data_validade >= CURRENT_DATE - INTERVAL '30 days';

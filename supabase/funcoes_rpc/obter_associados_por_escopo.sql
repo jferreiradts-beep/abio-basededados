@@ -3,13 +3,14 @@ CREATE OR REPLACE FUNCTION public.obter_associados_por_escopo(p_escopo_id intege
  LANGUAGE plpgsql
 AS $function$
 DECLARE
-    v_matricula TEXT;
+    v_matricula integer;
     v_json JSON;
 BEGIN
     -- 1. Buscar a matrícula do escopo
-    SELECT e.matricula
+    SELECT u.matricula_id
     INTO v_matricula
-    FROM escopo e
+    FROM uprod u
+    JOIN escopo e ON e.uprod_id = u.id
     WHERE e.id = p_escopo_id;
 
     -- 2. Buscar todos os associados dessa matrícula,
@@ -30,7 +31,7 @@ BEGIN
     INTO v_json
     FROM rel_mat_asso r
     JOIN associado a ON a.id = r.associado_id
-    WHERE r.matricula = v_matricula;
+    WHERE r.matricula_id = v_matricula;
 
     RETURN json_build_object(
         'matricula', v_matricula,

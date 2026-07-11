@@ -12,15 +12,11 @@ begin
     select jsonb_build_object(
         'id', g.id,
         'nome', g.nome,
-        'nucleo', n.nome,
-        'coordenador', ac.nome,
-        'facilitador', af.nome
+        'coordenador', ac.nome
     )
     into v_dados_gerais
     from grupo g
-    left join nucleo n on n.id = g.nucleo_id
     left join associado ac on ac.id = g.coordenador
-    left join associado af on af.id = g.facilitador
     where g.id = p_grupo_id;
 
     --------------------------------------------------------------------
@@ -28,18 +24,20 @@ begin
     --------------------------------------------------------------------
     select jsonb_agg(
         jsonb_build_object(
-            'matricula', m.matricula,
+            'id_matricula', m.id,
+            'matricula', m.nome,
 
             'primeiro_associado',
             (
                 select a.nome
                 from rel_mat_asso r
                 join associado a on a.id = r.associado_id
-                where r.matricula::text = m.matricula::text
+                where r.matricula_id = m.id
                 order by a.id
                 limit 1
             ),
 
+            'uprod', u.nome,
             'id_escopo', e.id,
 
             'escopo',
@@ -73,8 +71,9 @@ begin
     )
     into v_detalhe
     from grupo g
-    join matriculas m on m.grupo_id = g.id
-    left join escopo e on e.matricula::text = m.matricula::text
+    join matricula m on m.grupo_id = g.id
+    left join uprod u on u.matricula_id = m.id
+    left join escopo e on e.uprod_id = u.id
     left join tipo_escopo te on te.id = e.nome
     where g.id = p_grupo_id;
 
