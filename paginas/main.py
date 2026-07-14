@@ -1,14 +1,22 @@
+import os
 import flet as ft
+import flet.fastapi as flet_fastapi
+from fastapi import FastAPI
+from fastapi.responses import FileResponse, JSONResponse
 from dashboard import DashboardBase
 from formulario_base import baseFormulario
 from pag_matricula import MatriculaBase
 from lista_produtos import baseProdutos
-from escudo_supabase import criar_cliente_supabase  # login_supabase e escudo_supabase removidos
+from escudo_supabase import criar_cliente_supabase
 from pag_login import LoginBase
 from pag_recuperar_senha import RecuperarSenhaBase
 from grupo_dashboard import grupoBase
 from pag_configuracoes import ConfiguracoesBase
 from relatorio_financeiro import relatorioFinanceiroBase
+
+_DIR_BASE = os.path.dirname(os.path.abspath(__file__))
+_DIR_ASSETS = os.path.join(_DIR_BASE, "assets")
+_DIR_CERTIFICADOS = os.path.join(_DIR_ASSETS, "certificados")
 
 def main(page: ft.Page):
     # Inicializa cliente sem logar automaticamente (agora o login é na tela)
@@ -132,9 +140,36 @@ def main(page: ft.Page):
         page.on_route_change(page.route)
 
 
+# ---------------------------------------------------------------------------
+# Servidor FastAPI — substitui ft.app() interno
+# As rotas aqui registadas TÊM PRIORIDADE sobre o SPA do Flet,
+# porque são resolvidas antes do mount em "/".
+# ---------------------------------------------------------------------------
+fastapi_app = FastAPI()
+
+@fastapi_app.get("/certificados/{filename}")
+async def serve_ficheiro(filename: str):
+    """Serve PDFs e CSVs gerados pela app, contornando o SPA do Flet."""
+    caminho = os.path.join(_DIR_CERTIFICADOS, filename)
+    if not os.path.isfile(caminho):
+        return JSONResponse({"erro": "Ficheiro não encontrado"}, status_code=404)
+
+    if filename.endswith(".pdf"):
+        media_type = "application/pdf"
+    elif filename.endswith(".csv"):
+        media_type = "text/csv; charset=utf-8"
+    else:
+        media_type = "application/octet-stream"
+
+    # Sem filename= → Content-Disposition: inline → browser exibe o PDF na aba
+    return FileResponse(caminho, media_type=media_type)
+
+
+# Flet montado em "/" DEPOIS das rotas personalizadas
+fastapi_app.mount("/", flet_fastapi.app(main, assets_dir=_DIR_ASSETS))
+
+
 if __name__ == "__main__":
-    import os
+    import uvicorn
     port = int(os.environ.get("PORT", 8080))
-    # Usando caminho absoluto para evitar bugs no servidor embutido dependendo do diretório de execução
-    diretorio_assets = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets")
-    ft.app(target=main, view=ft.AppView.WEB_BROWSER, port=port, host="0.0.0.0", assets_dir=diretorio_assets)
+    uvicorn.run(fastapi_app, host="0.0.0.0", port=port)
