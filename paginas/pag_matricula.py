@@ -94,7 +94,7 @@ class janelaNovoAssociado:
         resposta = self.page.cliente.rpc('vincular_associado', {
             'p_nome': self.campos[0].value, 
             'p_cpf': cpf,
-            'p_matricula_id': int(self.page.session.get('id'))
+            'p_matricula': int(self.page.session.get('id'))
             }).execute()
 
         # Fechar a janela
