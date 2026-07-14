@@ -451,8 +451,8 @@ class imprimirEscopo():
             with open(caminho_arquivo, "wb") as file_out:
                 file_out.write(buffer_pdf)
 
-            print(f"Certificado gerado: {nome_arquivo}")            
-            self.page.launch_url(url=f"/certificados/{nome_arquivo}", web_window_name="_blank")
+            print(f"Certificado gerado: {nome_arquivo}")
+            self.page.download(url=f"/certificados/{nome_arquivo}", filename=nome_arquivo)
         except ValueError as e:
             aviso(self.page, str(e))
         except Exception as e:
