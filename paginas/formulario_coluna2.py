@@ -470,7 +470,12 @@ class menuEscopo():
 
 
     def obter_dados(self):
-        dados = self.page.cliente.rpc('obter_info_escopo', {'p_escopo_id': self.page.session.get('id')}).execute()
+        try:
+            escopo_id = int(self.page.session.get('id') or 0)
+        except (ValueError, TypeError):
+            escopo_id = 0
+            
+        dados = self.page.cliente.rpc('obter_info_escopo', {'p_escopo_id': escopo_id}).execute()
         return dados.data
 
     @staticmethod

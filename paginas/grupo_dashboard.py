@@ -32,7 +32,7 @@ class quadroTabela():
         self.page.voltar_dados['dados_pagina'].append({
             'grupo_dashboard_nucleo_id': self.page.session.get("grupo_dashboard_nucleo_id"),
             'grupo_dashboard_grupo_id': self.page.session.get("grupo_dashboard_grupo_id"),
-            'id': self.page.session.get("grupo_dashboard_grupo_id")
+            'id': self.page.session.get("id")
         })
         
         if matricula:
@@ -64,8 +64,8 @@ class quadroTabela():
 
     # ── linha da tabela ────────────────────────────────────────────
     def _montar_linha(self, item):
-        matricula = item.get('id_matricula', '0')
-        escopo_id = item.get('id_escopo', '0')
+        matricula = item.get('id_matricula') or 0
+        escopo_id = item.get('id_escopo') or 0
         botoes = ft.Row([
             ft.ElevatedButton("M", width=30, on_click= lambda e, x=matricula: self.abrir_formulario(e, x, True)),
             ft.ElevatedButton("E", width=30, on_click= lambda e, x=escopo_id: self.abrir_formulario(e, x, False)),
@@ -217,20 +217,37 @@ class grupoBase():
         self.dropdown_nucleo.options = opcoes
 
         # Restaurar estado se voltar para a página
-        saved_nucleo_id = self.page.avancar_dados.pop('nucleo_id', None)
+        if 'nucleo_id' in self.page.avancar_dados:
+            saved_nucleo_id = self.page.avancar_dados.pop('nucleo_id')
+        else:
+            saved_nucleo_id = self.page.session.get('grupo_dashboard_nucleo_id')
+
         if saved_nucleo_id:
             self.dropdown_nucleo.value = str(saved_nucleo_id)
+            self.page.session.set("grupo_dashboard_nucleo_id", saved_nucleo_id)
             
             resposta_grupos = self.page.cliente.table('grupo').select('id, nome').eq('nucleo_id', saved_nucleo_id).order('nome').execute()
             opcoes_grupos = [ft.dropdown.Option(key=str(g['id']), text=g['nome']) for g in resposta_grupos.data]
             self.dropdown_grupo.options = opcoes_grupos
             
-            saved_grupo_id = self.page.avancar_dados.pop('grupo_id', None)
+            if 'grupo_id' in self.page.avancar_dados:
+                saved_grupo_id = self.page.avancar_dados.pop('grupo_id')
+            else:
+                saved_grupo_id = self.page.session.get('grupo_dashboard_grupo_id')
+            
             if saved_grupo_id:
                 self.dropdown_grupo.value = str(saved_grupo_id)
+                self.page.session.set("grupo_dashboard_grupo_id", saved_grupo_id)
                 self.page.session.set("id", str(saved_grupo_id))
                 self.atualizar_dados()
                 self.linha_botoes_obj.btn_imprimir.visible = True
+            else:
+                self.page.session.set("grupo_dashboard_grupo_id", None)
+                self.page.session.set("id", None)
+        else:
+            self.page.session.set("grupo_dashboard_nucleo_id", None)
+            self.page.session.set("grupo_dashboard_grupo_id", None)
+            self.page.session.set("id", None)
         
         self.dropdown_nucleo.update()
         self.dropdown_grupo.update()
