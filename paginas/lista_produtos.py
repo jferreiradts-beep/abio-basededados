@@ -523,7 +523,7 @@ class dadosProdutos():
         self.page = page
         self.cliente = page.cliente
         # Prioridade: avancar_dados (vindo de verProdutos) > session (fluxo directo)
-        self.tipo_escopo = page.avancar_dados.pop('tipo_escopo', None) \
+        self.tipo_escopo = page.avancar_dados.get('tipo_escopo') \
                            or page.session.get("tipo_escopo")
         _id_raw = page.session.get("id")
         self.id_escopo = int(_id_raw) if _id_raw not in (None, '0', 0) else _id_raw
