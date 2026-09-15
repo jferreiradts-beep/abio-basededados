@@ -4,8 +4,7 @@ import pandas as pd
 import os
 from formulario_coluna2 import funcao_menu_lateral  
 from escudo_supabase import aviso
-from formatar_campos import formatar_cpf_cnpj
-import re
+from formatar_campos import aplicarMascara
 
 COR_MODIFICADO = "#FFFDE7"   # amarelo pálido — campo com valor não salvo
 COR_NORMAL     = None        # fundo padrão do tema
@@ -118,62 +117,14 @@ class botoesFormulario():
             aviso(self.page, f"Erro ao salvar formulário: {mensagem}")
 
 
-class aplicarMascara():
-    """Aplica uma máscara de formatação a um valor.
-    Se mascaras=None, o método aplicar_mascara devolve o valor inalterado (no-op).
-    """
-    def __init__(self, mascaras: str | None):
-        if mascaras:
-            self.mascaras = sorted(mascaras.split('; '), key=lambda x: x.count('#'))
-            self.c_mascaras = [x.count('#') for x in self.mascaras]
-            self.aplicar_mascara = self._aplicar_mascara_texto
-            self.salvar_limpo = self._salvar_limpo_texto
-            self.on_change = self._on_change_texto   # formata o display em tempo real
-        else:
-            self.aplicar_mascara = lambda valor: valor  # no-op
-            self.salvar_limpo = lambda valor: valor
-            self.on_change = lambda e: None             # no-op
-
-    def _aplicar_mascara_texto(self, valor):
-        valor_limpo = re.sub(r'[^0-9]', '', valor)
-        if len(valor_limpo) == 0:
-            return None
-
-        # Decidir máscara aplicável
-        c = len(valor_limpo)
-        id_mascara = next((i for i, limite in enumerate(self.c_mascaras) if c <= limite), -1)
-        mascara = self.mascaras[id_mascara] if id_mascara != -1 else None
-
-        # Aplicar máscara
-        i = 0
-        valor_final = ''
-        for m in mascara:
-            if m == '#':
-                if i >= c:
-                    break
-                valor_final += valor_limpo[i]
-                i += 1
-            else:
-                valor_final += m
-
-        return valor_final
-
-    def _salvar_limpo_texto(self, valor):
-        return re.sub(r'[^0-9]', '', valor)
-
-    def _on_change_texto(self, e):
-        """Formata o valor enquanto o utilizador digita, actualizando o controlo."""
-        e.control.value = self._aplicar_mascara_texto(e.control.value)
-        e.control.update()
-
-
-
 class campoFixo():
-    def __init__(self, page, resposta, campo, largura=(100, 250)):
+    def __init__(self, page, resposta, campo, largura=(100, 250), rotulo_na_borda=False, rotulo_acima=False):
         self.page = page
         self.resposta = resposta
         self.campo = campo
         self.largura = largura
+        self.rotulo_na_borda = rotulo_na_borda
+        self.rotulo_acima = rotulo_acima
         self._dependentes = []   # outros campoFixo que precisam ser actualizados quando este muda
 
         # Sempre cria a máscara — ela própria sabe o que fazer com None
@@ -192,9 +143,12 @@ class campoFixo():
     def recarregar_opcoes(self):
         """Recarrega as opções do dropdown com base no valor actual do campo pai."""
         opcoes_raw = self.consultar_opcoes()
-        self._entrada.options = [
-            ft.dropdown.Option(key=str(op['id']), text=op['opcao']) for op in opcoes_raw
-        ]
+        if opcoes_raw:
+            self._entrada.options = [
+                ft.dropdown.Option(key=str(op['id']), text=op['opcao']) for op in opcoes_raw
+            ]
+        else:
+            self._entrada.options = []
         self._entrada.value = None
         self.resposta['dados_fixos'][self.campo] = ''
         # Notificar os próprios dependentes desta instância (encadeamento)
@@ -214,7 +168,7 @@ class campoFixo():
         return valor
 
     def criar_campo(self):
-        titulo = ft.Text(self.resposta['campos_fixos'][self.campo]['rotulo'], width=self.largura[0], weight="bold")
+        rotulo_texto = self.resposta['campos_fixos'][self.campo]['rotulo']
         valor_inicial = self.obter_valor_inicial()
 
         # Cor inicial: amarelo se registo novo (id nulo/zero), normal se existente
@@ -223,24 +177,45 @@ class campoFixo():
         bgcolor_ini = COR_MODIFICADO if novo_registo else COR_NORMAL
 
         self._precisa_carregar = False  # flag para lazy load
+        na_borda = self.rotulo_na_borda and not self.rotulo_acima
+        label_prop = rotulo_texto if na_borda else None
+        lbl_style = ft.TextStyle(size=12) if na_borda else None
+        cnt_padding = ft.padding.symmetric(vertical=4, horizontal=8) if na_borda else None
 
         if self.resposta['campos_fixos'][self.campo].get('opcoes'):
             self._precisa_carregar = True
             self._valor_inicial_dropdown = str(valor_inicial) if valor_inicial else None
             self._entrada = ft.Dropdown(
+                label=label_prop,
+                label_style=lbl_style,
+                dense=na_borda,
+                content_padding=cnt_padding,
                 value=None, options=[],   # começa vazio; preenchido em lazy load
                 disabled=True,
                 width=self.largura[1], text_style=ft.TextStyle(size=13), menu_height=300,
                 on_change=lambda e: self.atualizar_campo(e.control.value))
         else:
             self._entrada = ft.TextField(
+                label=label_prop,
+                label_style=lbl_style,
+                dense=na_borda,
+                content_padding=cnt_padding,
                 value=self.mascara.aplicar_mascara(valor_inicial),
                 width=self.largura[1], text_style=ft.TextStyle(size=13),
                 on_change=lambda e: (self.mascara.on_change(e), self.atualizar_campo(e.control.value)))
 
         # Container dá cor uniforme a TextField e Dropdown
-        self._container = ft.Container(content=self._entrada, bgcolor=bgcolor_ini, border_radius=5)
-        return ft.Row([titulo, self._container], alignment=ft.MainAxisAlignment.CENTER, spacing=10)
+        # Se rótulo na borda, adiciona padding superior para o rótulo flutuante não ser cortado
+        container_padding = ft.padding.only(top=6) if na_borda else None
+        self._container = ft.Container(content=self._entrada, bgcolor=bgcolor_ini, border_radius=5, padding=container_padding)
+        if self.rotulo_acima:
+            titulo = ft.Text(rotulo_texto, weight="bold")
+            return ft.Column([titulo, self._container], spacing=3, alignment=ft.MainAxisAlignment.START)
+        elif self.rotulo_na_borda:
+            return self._container
+        else:
+            titulo = ft.Text(rotulo_texto, width=self.largura[0], weight="bold")
+            return ft.Row([titulo, self._container], alignment=ft.MainAxisAlignment.CENTER, spacing=10)
 
     # ------------------------------------------------------------------
     # Feedback visual: campo modificado vs salvo
@@ -274,9 +249,12 @@ class campoFixo():
         """Busca as opções via RPC e actualiza o Dropdown. Chamado em thread separada."""
         try:
             opcoes_raw = self.consultar_opcoes()
-            self._entrada.options = [
-                ft.dropdown.Option(key=str(op['id']), text=op['opcao']) for op in opcoes_raw
-            ]
+            if opcoes_raw:
+                self._entrada.options = [
+                    ft.dropdown.Option(key=str(op['id']), text=op['opcao']) for op in opcoes_raw
+                ]
+            else:
+                self._entrada.options = []
             self._entrada.value = self._valor_inicial_dropdown
             self._entrada.disabled = False
             self._entrada.update()
@@ -558,10 +536,6 @@ class baseFormulario():
         # Configurar página
         self.page.title = 'SPG ABIO: ' + self.dados.titulo
         self.construir_layout()
-
-        # Carregar dados de municipios em menu lateral de escopos
-        if self.page.session.get("tipo") == 'escopo':
-            self.menu_lateral.opcoes_mun_estados = pd.read_csv(os.path.join('mapa', 'municipios_estados.csv'))
 
     def ver_janela_nrotulo(self):
         if self.janela_rotulo.janela not in self.page.overlay:

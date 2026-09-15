@@ -19,7 +19,7 @@ class quadroTabela():
         self.page = page
         self.ao_salvar = ao_salvar
         self.dados = list(dados['detalhe'])      # cópia mutável
-        self.sort_campo = 'matricula'            # ordenação inicial
+        self.sort_campo = 'validade'            # ordenação inicial
         self.sort_asc   = True
         self._ordenar()
         self._montar()
@@ -47,10 +47,19 @@ class quadroTabela():
     # ── ordenação ──────────────────────────────────────────────────
     def _ordenar(self):
         if self.sort_campo:
-            self.dados.sort(
-                key=lambda x: (x.get(self.sort_campo) or '').lower(),
-                reverse=not self.sort_asc
-            )
+            if self.sort_campo == 'validade':
+                self.dados.sort(
+                    key=lambda x: (
+                        (1 if not x.get('validade') else 0) if self.sort_asc else (1 if not x.get('validade') else 2),
+                        (x.get('validade') or '').lower()
+                    ),
+                    reverse=not self.sort_asc
+                )
+            else:
+                self.dados.sort(
+                    key=lambda x: (x.get(self.sort_campo) or '').lower(),
+                    reverse=not self.sort_asc
+                )
 
     def _on_sort(self, campo):
         """Chamado ao clicar no cabeçalho de uma coluna."""
@@ -59,7 +68,6 @@ class quadroTabela():
         else:
             self.sort_campo = campo
             self.sort_asc   = True              # nova coluna → ascendente
-        self._ordenar()
         self._atualizar()
 
     # ── linha da tabela ────────────────────────────────────────────
@@ -133,6 +141,7 @@ class quadroTabela():
         self.tabela = ft.Column([self._dt], scroll=ft.ScrollMode.AUTO)
 
     def _atualizar(self):
+        self._ordenar()
         # Atualiza cabeçalhos (setas)
         for i, (campo, titulo) in enumerate(self.COLUNAS):
             self._dt.columns[i].label = self._label_coluna(campo, titulo)

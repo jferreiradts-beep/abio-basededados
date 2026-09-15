@@ -3,7 +3,10 @@ import pandas as pd
 import base64
 import unicodedata
 from datetime import datetime
-from formatar_campos import formatar_cpf_cnpj, formatar_data
+from formatar_campos import aplicarMascara
+
+MASCARA_CPF_CNPJ = aplicarMascara("###.###.###-##; ##.###.###/####-##")
+MASCARA_DATA = aplicarMascara("data")
 from gerar_certificado import montarCertificado, montarFRI
 from escudo_supabase import aviso
 
@@ -49,220 +52,151 @@ class escopoNaoSalvo():
         
 
 class verAcontecimentos():
-    def __init__(self, page, id, ao_salvar = None):
+    def __init__(self, page, id, ao_salvar=None):
         self.page = page
         self.id = id
         self.ao_salvar = ao_salvar
         self.modificado = False
+        self.acontecimentos_dados = []
         self.exibir_janela_contecimentos()
 
     def obter_dados(self):
-        cabecalho = self.page.cliente.table('vw_dados_com_associado').select('*').eq('id_escopo', int(self.id)).execute()
-        dicionario_acontecimentos = self.page.cliente.table('tipo_acontecimento').select('*').execute()
-        resposta = self.page.cliente.table('acontecimentos').select('*').eq('escopo_id', self.id).execute()
-        return cabecalho.data, dicionario_acontecimentos.data, resposta.data
+        try:
+            resposta = self.page.cliente.rpc(
+                'obter_acontecimentos_escopo',
+                {'p_id': int(self.id)}
+            ).execute()
+            dados = resposta.data
+            if isinstance(dados, str):
+                import json
+                dados = json.loads(dados)
+            return dados or []
+        except Exception as err:
+            print(f"Erro ao obter acontecimentos do escopo: {err}")
+            return []
 
-    def montar_lista_acontecimentos(self):
-        self.dados_acontecimentos = self.obter_dados()
+    def carregar_tabela(self):
+        self.lista_acontecimentos.controls.clear()
+        idx = 0
+        self._ac_larguras = [90, 180, 270]
+        for a in self.acontecimentos_dados:
+            raw_data = a.get("data") or ""
+            try:
+                dt_str = datetime.strptime(raw_data, "%Y-%m-%d").strftime("%d/%m/%Y")
+            except Exception:
+                dt_str = raw_data
+
+            tipo_str = a.get("tipo") or ""
+            obs_str = a.get("observacoes") or ""
+
+            valores = [dt_str, tipo_str, obs_str]
+            cor_fundo = ft.Colors.WHITE if idx % 2 == 0 else ft.Colors.GREY_100
+
+            linha = ft.GestureDetector(
+                content=ft.Container(
+                    content=ft.Row(
+                        [ft.Container(
+                            content=ft.Text(v, size=13, overflow=ft.TextOverflow.ELLIPSIS),
+                            width=w, padding=ft.padding.symmetric(horizontal=8, vertical=10)
+                        ) for v, w in zip(valores, self._ac_larguras)],
+                        spacing=0,
+                    ),
+                    bgcolor=cor_fundo,
+                ),
+                on_double_tap_down=lambda e, id_ac=a.get('id'): self.abrir_dialog_acontecimento(id_ac)
+            )
+            self.lista_acontecimentos.controls.append(linha)
+            idx += 1
+
+    def abrir_dialog_acontecimento(self, id_acontecimento):
+        from pag_matricula import janelaAcontecimento
         
-        # Ordenação por data e ordem
-        ordem_tipos = {tipo['id']: tipo['ordem'] for tipo in self.dados_acontecimentos[1]}
-        acontecimentos = sorted(
-            self.dados_acontecimentos[2], 
-            key=lambda x: (x['data'], ordem_tipos.get(x['tipo_id'], 0)), 
-            reverse=True
+        if hasattr(self, 'janela_acontecimentos') and self.janela_acontecimentos:
+            self.janela_acontecimentos.open = False
+            self.page.update()
+
+        janelaAcontecimento(
+            self.page, 
+            self.id, 
+            id_acontecimento, 
+            ao_salvar=self.ao_acontecimento_salvo, 
+            escopo=True,
+            ao_fechar=self.ao_fechar_edicao
         )
-        lista_acontecimentos = ft.Column([], scroll=ft.ScrollMode.AUTO, expand=True)
-        for acontecimento in acontecimentos:
-            tipo_acontecimento = next((item for item in self.dados_acontecimentos[1] if item['id'] == acontecimento['tipo_id']), None)
-            data_formatada = datetime.strptime(acontecimento['data'], '%Y-%m-%d')
-            data_formatada = data_formatada.strftime('%d-%m-%Y')
-            txt_data = ft.Text(value=data_formatada, width=100, weight="bold" if tipo_acontecimento['destaque'] else "normal")
-            txt_tipo = ft.Text(value=tipo_acontecimento['nome'], width=200, weight="bold" if tipo_acontecimento['destaque'] else "normal")
-            txt_observacoes = ft.Text(value=acontecimento['observacoes'], width=240, weight="bold" if tipo_acontecimento['destaque'] else "normal")
-            btn_editar = ft.IconButton(ft.Icons.EDIT, on_click=lambda e, a=acontecimento: self.editar_acontecimento(e, a))
-            lista_acontecimentos.controls.append(ft.Row([
-                txt_data,
-                txt_tipo,
-                txt_observacoes,
-                btn_editar
-            ]))
-        return lista_acontecimentos
 
-    def montar_linha_botoes(self, inicial = True):
-        self.botoes = {
-            'alterar': ft.TextButton("Alterar", visible=False),
-            'eliminar': ft.TextButton("Eliminar", visible=False),
-            'voltar': ft.TextButton("Voltar", on_click=self.voltar_acontecimento, visible=False),
-            'adicionar': ft.TextButton("Adicionar", on_click=self.adicionar_acontecimento),
-            'fechar': ft.TextButton("Fechar", on_click=self.fechar_janela_acontecimentos)
-        }
-
-        return ft.Row([
-            self.botoes['alterar'],
-            self.botoes['eliminar'],
-            self.botoes['voltar'],
-            self.botoes['adicionar'],
-            self.botoes['fechar']
-        ], alignment=ft.MainAxisAlignment.END)
-
-    # Ações de botões
-    def editar_acontecimento(self, e, x):
-        # Limpar aviso se existir
-        if self.formulario_acontecimento['aviso'].value != '':
-            self.formulario_acontecimento['aviso'].value = ''
-            self.formulario_acontecimento['aviso'].update()
-
-        # Formatar data para DD-MM-AAAA
-        data_formatada = datetime.strptime(x['data'], '%Y-%m-%d')
-        data_formatada = data_formatada.strftime('%d-%m-%Y')
-        self.formulario_acontecimento['data'].value = data_formatada
-        self.formulario_acontecimento['data'].update()
-        
-        # Preencher os outros campos
-        for chave in ['tipo_id', 'observacoes']:
-            self.formulario_acontecimento[chave].value = x[chave]
-            self.formulario_acontecimento[chave].update()
-
-        # Atualizar botões
-        for nome in ['adicionar', 'fechar']:
-            self.botoes[nome].visible = False 
-        for nome in ['alterar', 'eliminar', 'voltar']:
-            self.botoes[nome].visible = True
-
-        self.botoes['alterar'].on_click = lambda e, idx=x['id']: self.alterar_acontecimento(e, idx)
-        self.botoes['eliminar'].on_click = lambda e, idx=x['id']: self.eliminar_acontecimento(e, idx)
-
-        self.linha_botoes.update()
-
-    def alterar_acontecimento(self, e, idx):
-        dados = {chave: valor.value for chave, valor in self.formulario_acontecimento.items() if chave != 'aviso'}
-        dados['escopo_id'] = self.page.session.get('id')
-
-        try:
-            data_formatada = datetime.strptime(dados['data'], '%d-%m-%Y')
-            dados['data'] = data_formatada.strftime('%Y-%m-%d')
-                
-        except ValueError:
-            self.formulario_acontecimento['aviso'].value = "Por favor, insira uma data válida (DD-MM-AAAA)."
-            self.formulario_acontecimento['aviso'].update()
-            return
-        
-        self.page.cliente.table('acontecimentos').update(dados).eq('id', idx).execute()
+    def ao_acontecimento_salvo(self, novos_dados=None):
         self.modificado = True
-        self.lista_acontecimentos.controls.clear()
-        self.lista_acontecimentos.controls.extend(self.montar_lista_acontecimentos().controls)
-        self.lista_acontecimentos.update()
-        self.voltar_acontecimento(e)
+        if novos_dados and isinstance(novos_dados, list) and len(novos_dados) > 0 and isinstance(novos_dados[0], dict) and 'tipo' in novos_dados[0]:
+            self.acontecimentos_dados = novos_dados
+        else:
+            self.acontecimentos_dados = self.obter_dados()
+        self.carregar_tabela()
 
-    def eliminar_acontecimento(self, e, idx):
-        self.page.cliente.table('acontecimentos').delete().eq('id', idx).execute()
-        self.modificado = True
-        self.lista_acontecimentos.controls.clear()
-        self.lista_acontecimentos.controls.extend(self.montar_lista_acontecimentos().controls)
-        self.lista_acontecimentos.update()
-        self.voltar_acontecimento(e)
+    def ao_fechar_edicao(self):
+        if hasattr(self, 'janela_acontecimentos') and self.janela_acontecimentos:
+            self.janela_acontecimentos.open = True
+            self.page.update()
 
-    def voltar_acontecimento(self, e):
-        # Limpar aviso se existir
-        if self.formulario_acontecimento['aviso'].value != '':
-            self.formulario_acontecimento['aviso'].value = ''
-            self.formulario_acontecimento['aviso'].update()
+    def fechar_janela_acontecimentos(self, e=None):
+        if self.modificado and self.ao_salvar and callable(self.ao_salvar):
+            self.ao_salvar()
 
-        self.formulario_acontecimento, layout_acontecimento = self.montar_formulario()
-        self.formulario_layout.controls.clear()
-        self.formulario_layout.controls.append(layout_acontecimento)
-        self.formulario_layout.update()
-        
-        for nome in ['alterar', 'eliminar', 'voltar']:
-            self.botoes[nome].visible = False
-        for nome in ['adicionar', 'fechar']:
-            self.botoes[nome].visible = True
-        self.linha_botoes.update()
-
-    def adicionar_acontecimento(self, e):
-        dados = {chave: valor.value for chave, valor in self.formulario_acontecimento.items() if chave != 'aviso'}
-        dados['escopo_id'] = self.id
-
-        try:
-            data_formatada = datetime.strptime(dados['data'], '%d-%m-%Y')
-            dados['data'] = data_formatada.strftime('%Y-%m-%d')
-                
-        except ValueError:
-            self.formulario_acontecimento['aviso'].value = "Por favor, insira uma data válida (AAAA-MM-DD)."
-            self.formulario_acontecimento['aviso'].update()
-            return
-        
-        self.page.cliente.table('acontecimentos').insert(dados).execute()
-        self.modificado = True
-        self.lista_acontecimentos.controls.clear()
-        self.lista_acontecimentos.controls.extend(self.montar_lista_acontecimentos().controls)
-        self.lista_acontecimentos.update()
-        self.voltar_acontecimento(e)
-
-
-    def fechar_janela_acontecimentos(self, e):
-        if self.modificado and self.ao_salvar:
-            self.ao_salvar()    
-        
         self.janela_acontecimentos.open = False
-        self.page.update()    
-
-
-
-    # Montar janela
-    def montar_formulario(self):
-        formulario_campos = {}
-        formulario_campos['data'] = ft.TextField(label="Data", width=150,
-            on_change= lambda e: (setattr(e.control, 'value', formatar_data(e.control.value)), e.control.update())
-        )
-        
-        opcoes_acontecimento = []
-        for item in sorted(self.dados_acontecimentos[1], key=lambda x: x['ordem']):
-            opcoes_acontecimento.append(ft.dropdown.Option(key=str(item['id']), text=item['nome']))
-        formulario_campos['tipo_id'] = ft.Dropdown(options=opcoes_acontecimento, width=340, label='Tipo de acontecimento')
-        formulario_campos['observacoes'] = ft.TextField(label="Observações", width=500)
-        formulario_campos['aviso'] = ft.Text(value="", color=ft.Colors.RED)
-
-        formulario_layout = ft.Column([
-                        ft.Row([
-                            formulario_campos['data'],
-                            formulario_campos['tipo_id'],
-                        ]),
-                        formulario_campos['observacoes'],
-                        formulario_campos['aviso']
-                    ])
-        
-        return formulario_campos, formulario_layout
-
-
+        self.page.update()
 
     def montar_janela(self):
-        if self.page.session.get('id') == '0':
+        if str(self.id) == '0' or self.page.session.get('id') == '0':
             return escopoNaoSalvo(fechar_janela=self.fechar_janela_acontecimentos).janela
 
-        self.lista_acontecimentos = self.montar_lista_acontecimentos()
-        self.formulario_acontecimento, self.formulario_layout = self.montar_formulario()        
-        self.linha_botoes = self.montar_linha_botoes()
+        self.acontecimentos_dados = self.obter_dados()
 
-        escopo = f"{self.dados_acontecimentos[0][0]['matricula']} - {self.dados_acontecimentos[0][0]['primeiro_associado']} - {self.dados_acontecimentos[0][0]['escopo']}"
+        self._ac_larguras = [90, 180, 270]
+        self._ac_titulos = ["Data", "Tipo", "Observações"]
 
-        # Montar janela
+        cabecalho_ac_row = ft.Container(
+            content=ft.Row(
+                [ft.Container(
+                    content=ft.Text(t, weight="bold", size=13),
+                    width=w, padding=ft.padding.symmetric(horizontal=8, vertical=10)
+                ) for t, w in zip(self._ac_titulos, self._ac_larguras)],
+                spacing=0,
+            ),
+            bgcolor=ft.Colors.GREY_300,
+            border_radius=ft.border_radius.only(top_left=4, top_right=4),
+        )
+
+        self.lista_acontecimentos = ft.ListView(expand=True, spacing=0, padding=0)
+        self.carregar_tabela()
+
+        tab_ac_container = ft.Container(
+            content=ft.Column([
+                cabecalho_ac_row,
+                self.lista_acontecimentos,
+            ], spacing=0, expand=True),
+            expand=True
+        )
+
+        btn_novo_ac = ft.ElevatedButton(
+            "Novo acontecimento",
+            on_click=lambda e: self.abrir_dialog_acontecimento(0),
+            style=ft.ButtonStyle(padding=ft.padding.symmetric(horizontal=16, vertical=10))
+        )
+
+        btn_fechar = ft.TextButton("Fechar", on_click=self.fechar_janela_acontecimentos)
+
         return ft.AlertDialog(
             title=ft.Text("Acontecimentos"),
             content=ft.Container(
-                width=610, height=400,
-                content=ft.Column([
-                    ft.Text(escopo),
-                    ft.Divider(),
-                    self.lista_acontecimentos, 
-                    ft.Divider(),
-                    self.formulario_layout,
-                ], expand=True)
+                width=580, height=400,
+                content=tab_ac_container,
+                padding=5
             ),
-            actions= [self.linha_botoes]
+            actions=[
+                btn_novo_ac,
+                btn_fechar
+            ],
+            actions_alignment=ft.MainAxisAlignment.END
         )
-
 
     def exibir_janela_contecimentos(self):
         self.janela_acontecimentos = self.montar_janela()
@@ -357,7 +291,7 @@ class nomesCertificado():
         coluna_nomes = ft.Column([], scroll=ft.ScrollMode.AUTO)
         for nome in self.nomes['associados']:
             chk = ft.Checkbox(value= todos_sem_vinculo or nome['vinculo'], data=nome['id'])
-            txt = ft.Text(value=f'{nome["nome"]} - {formatar_cpf_cnpj(nome["cpf"])}', weight="bold", width=350)
+            txt = ft.Text(value=f'{nome["nome"]} - {MASCARA_CPF_CNPJ.aplicar_mascara(nome["cpf"])}', weight="bold", width=350)
             self.lista_checkboxes.append(chk)
             coluna_nomes.controls.append(ft.Row([chk, txt]))
 

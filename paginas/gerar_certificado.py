@@ -15,7 +15,9 @@ import os
 _DIR_BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _DIR_MAPA = os.path.join(_DIR_BASE, 'mapa')
 
-from formatar_campos import formatar_cpf_cnpj
+from formatar_campos import aplicarMascara
+
+_MASCARA_CPF_CNPJ = aplicarMascara("###.###.###-##; ##.###.###/####-##")
 
 
 class obterDados:
@@ -74,7 +76,7 @@ class obterDados:
 
         texto = []
         for associado in self.associados_vinculados:
-            texto.append(f"{associado.get('nome') or ''} - {formatar_cpf_cnpj(associado.get('cpf') or '')}")
+            texto.append(f"{associado.get('nome') or ''} - {_MASCARA_CPF_CNPJ.aplicar_mascara(associado.get('cpf') or '')}")
 
         return ', '.join(texto)
 
