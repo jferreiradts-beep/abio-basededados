@@ -24,6 +24,10 @@ def main(page: ft.Page):
     page.voltar_dados = {'endereco': [], 'dados_pagina': []}
     page.avancar_dados = {}
     page.auth_user = None  # Cache para o usuário autenticado
+    page.locale_configuration = ft.LocaleConfiguration(
+        supported_locales=[ft.Locale("pt", "BR"), ft.Locale("pt")],
+        current_locale=ft.Locale("pt", "BR")
+    )
 
     # Público: rotas que não precisam de login
     PUBLIC_ROUTES = ["/login", "/recuperar-senha", "/certificados/"]

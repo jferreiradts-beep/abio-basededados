@@ -484,10 +484,10 @@ class dadosFormulario():
             return subtitulo + ' - Novo(a) ' + self.tipo
 
         if self.tipo == 'associado':
-            id_matricula = self.page.cliente.table('rel_mat_asso').select('matricula_id').eq('associado_id', self.id).execute()
-            id_matricula = id_matricula.data[0]['matricula_id']
+            id_escopo = self.page.cliente.table('vw_escopo_cpf_visivel').select('id_escopo').eq('id_associado', self.id).execute()
+            id_escopo = id_escopo.data[0]['id_escopo']
 
-            dados = self.page.cliente.table('vw_dados_com_associado').select('*').eq('id_matricula', id_matricula).execute()
+            dados = self.page.cliente.table('vw_dados_com_associado').select('*').eq('id_escopo', id_escopo).execute()
             dados = dados.data[0]
 
             for k, v in dados.items():

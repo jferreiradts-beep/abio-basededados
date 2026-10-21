@@ -596,16 +596,16 @@ class janelaPagamento:
         self.id_matricula = id_matricula
         self.ao_salvar = ao_salvar
         self.total_com_desconto_atual = 0.0
-        self.dados_mensalidades = self.obter_dados()
 
-        if not self.dados_mensalidades:
-            aviso(self.page, "Não existem mensalidades em aberto")
-            return
+        hoje = datetime.now()
+        self.data_consultada = hoje.strftime('%Y-%m-%d')
+        self.dados_mensalidades = self.obter_dados(self.data_consultada)
 
         self.exibir_janela()
 
-    def obter_dados(self):
-        data_atual = datetime.now().strftime('%Y-%m-%d')
+    def obter_dados(self, data_consulta=None):
+        if not data_consulta:
+            data_consulta = datetime.now().strftime('%Y-%m-%d')
         try:
             matricula_id_val = int(self.id_matricula) if self.id_matricula else 0
         except (ValueError, TypeError):
@@ -614,7 +614,7 @@ class janelaPagamento:
         try:
             resposta = self.page.cliente.rpc(
                 'mensalidades_pendentes_json',
-                {'p_data': data_atual, 'p_matricula_id': matricula_id_val}
+                {'p_data': data_consulta, 'p_matricula_id': matricula_id_val}
             ).execute()
             dados = resposta.data
             if isinstance(dados, str):
@@ -629,7 +629,10 @@ class janelaPagamento:
             print(f"Erro ao obter mensalidades pendentes: {err}")
             return []
 
-    def recalcular_totais(self, e=None):
+    def recalcular_totais(self, e=None, atualizar_janela=True):
+        if not self.dados_mensalidades:
+            return
+
         subtotal = 0.0
         for item, chk in self.lista_controles:
             if chk.value:
@@ -657,7 +660,7 @@ class janelaPagamento:
             tem_selecionado = any(chk.value for _, chk in self.lista_controles)
             self.btn_pagar.disabled = not tem_selecionado
 
-        if hasattr(self, 'janela') and self.janela:
+        if atualizar_janela and hasattr(self, 'janela') and self.janela:
             self.janela.update()
 
     def salvar_pagamento(self, e):
@@ -672,7 +675,7 @@ class janelaPagamento:
             aviso(self.page, "Selecione pelo menos uma mensalidade para pagar.")
             return
 
-        data_atual = datetime.now().strftime('%Y-%m-%d')
+        data_pagamento = self.data_consultada if hasattr(self, 'data_consultada') and self.data_consultada else datetime.now().strftime('%Y-%m-%d')
         try:
             matricula_id_val = int(self.id_matricula) if self.id_matricula else 0
         except (ValueError, TypeError):
@@ -685,7 +688,7 @@ class janelaPagamento:
                 'salvar_pagamento_mensalidades',
                 {
                     'p_matricula_id': matricula_id_val,
-                    'p_data': data_atual,
+                    'p_data': data_pagamento,
                     'p_vencimentos': vencimentos,
                     'p_valor_pago': valor_pago
                 }
@@ -696,6 +699,7 @@ class janelaPagamento:
                 import json
                 novo_financeiro = json.loads(novo_financeiro)
 
+            self.limpar_overlay()
             self.janela.open = False
             self.page.update()
 
@@ -715,45 +719,195 @@ class janelaPagamento:
         except (ValueError, TypeError):
             return str(data_str)
 
+    def limpar_overlay(self, e=None):
+        if hasattr(self, 'date_picker') and self.date_picker in self.page.overlay:
+            self.page.overlay.remove(self.date_picker)
+
+    def fechar_janela(self, e=None):
+        self.limpar_overlay()
+        self.janela.open = False
+        self.page.update()
+
+    def abrir_date_picker(self):
+        try:
+            val = (self.input_data.value or "").strip()
+            dt = datetime.strptime(val, '%d/%m/%Y')
+            self.date_picker.value = dt
+        except Exception:
+            self.date_picker.value = datetime.now()
+        self.date_picker.open = True
+        self.page.update()
+
+    def ao_selecionar_data_picker(self, e):
+        val = self.date_picker.value
+        if val:
+            if isinstance(val, str):
+                try:
+                    dt = datetime.fromisoformat(val)
+                    nova_data = dt.strftime('%d/%m/%Y')
+                except Exception:
+                    nova_data = val
+            elif hasattr(val, 'strftime'):
+                nova_data = val.strftime('%d/%m/%Y')
+            else:
+                nova_data = str(val)
+
+            self.input_data.value = nova_data
+            self.input_data.update()
+            self.processar_nova_data(nova_data)
+
+    def ao_digitar_data(self, e):
+        self.mascara_data.on_change(e)
+        val = (e.control.value or "").strip()
+        if len(val) == 10:
+            self.processar_nova_data(val)
+
+    def ao_confirmar_data(self, e):
+        val = (self.input_data.value or "").strip()
+        if len(val) == 10:
+            self.processar_nova_data(val)
+        else:
+            if hasattr(self, 'data_consultada') and self.data_consultada:
+                try:
+                    self.input_data.value = datetime.strptime(self.data_consultada, '%Y-%m-%d').strftime('%d/%m/%Y')
+                    self.input_data.update()
+                except Exception:
+                    pass
+
+    def processar_nova_data(self, data_str):
+        if not data_str:
+            return
+        try:
+            dt = datetime.strptime(data_str, '%d/%m/%Y')
+            data_sql = dt.strftime('%Y-%m-%d')
+        except ValueError:
+            return
+
+        if data_sql == getattr(self, 'data_consultada', None):
+            return
+
+        self.data_consultada = data_sql
+        self.dados_mensalidades = self.obter_dados(data_sql)
+        self.atualizar_tabela_e_totais(atualizar_janela=True)
+
+    def atualizar_tabela_e_totais(self, atualizar_janela=True):
+        if not self.dados_mensalidades:
+            self.lista_controles = []
+            self.container_tabela.content = ft.Container(
+                content=ft.Text(
+                    "Não existem mensalidades em aberto",
+                    size=14,
+                    color=ft.Colors.GREY_700,
+                    weight="bold",
+                    text_align=ft.TextAlign.CENTER,
+                ),
+                alignment=ft.alignment.center,
+                height=250,
+            )
+            self.txt_total.value = "R$ 0,00"
+            self.txt_total.color = ft.Colors.GREY_500
+            self.input_desconto.value = "0,00"
+            self.input_desconto.disabled = True
+            self.txt_total_desconto.value = "R$ 0,00"
+            self.txt_total_desconto.color = ft.Colors.GREY_500
+            self.total_com_desconto_atual = 0.0
+            if hasattr(self, 'btn_pagar') and self.btn_pagar:
+                self.btn_pagar.disabled = True
+        else:
+            self.input_desconto.disabled = False
+            self.txt_total.color = None
+            self.txt_total_desconto.color = ft.Colors.GREEN_700
+
+            itens = self.dados_mensalidades[:5]
+            self.lista_controles = []
+            rows_tabela = []
+
+            for item in itens:
+                venc_raw = item.get('vencimento', '')
+                venc_fmt = self._formatar_data(venc_raw)
+                val_num = item.get('valor_atualizado', item.get('valor', 0.0))
+                try:
+                    val_float = float(val_num)
+                except (ValueError, TypeError):
+                    val_float = 0.0
+                val_fmt = f"R$ {val_float:.2f}".replace('.', ',')
+
+                chk = ft.Checkbox(value=True, on_change=self.recalcular_totais)
+                self.lista_controles.append((item, chk))
+
+                rows_tabela.append(
+                    ft.DataRow(cells=[
+                        ft.DataCell(ft.Text(venc_fmt)),
+                        ft.DataCell(ft.Text(val_fmt)),
+                        ft.DataCell(chk),
+                    ])
+                )
+
+            self.tabela.rows = rows_tabela
+            self.container_tabela.content = ft.Column([self.tabela], scroll=ft.ScrollMode.AUTO)
+            self.recalcular_totais(atualizar_janela=False)
+
+        if atualizar_janela and hasattr(self, 'janela') and self.janela:
+            self.janela.update()
+
     def montar_janela(self):
-        # Limitar a no máximo 5 linhas (mensalidades)
-        itens = self.dados_mensalidades[:5]
+        self.mascara_data = aplicarMascara('data')
+        hoje = datetime.now()
+        data_hoje_fmt = hoje.strftime('%d/%m/%Y')
 
-        self.lista_controles = []
-        rows_tabela = []
-
-        for item in itens:
-            venc_raw = item.get('vencimento', '')
-            venc_fmt = self._formatar_data(venc_raw)
-            val_num = item.get('valor_atualizado', item.get('valor', 0.0))
-            try:
-                val_float = float(val_num)
-            except (ValueError, TypeError):
-                val_float = 0.0
-            val_fmt = f"R$ {val_float:.2f}".replace('.', ',')
-
-            chk = ft.Checkbox(value=True, on_change=self.recalcular_totais)
-            self.lista_controles.append((item, chk))
-
-            rows_tabela.append(
-                ft.DataRow(cells=[
-                    ft.DataCell(ft.Text(venc_fmt)),
-                    ft.DataCell(ft.Text(val_fmt)),
-                    ft.DataCell(chk),
-                ])
+        if not getattr(self.page, 'locale_configuration', None):
+            self.page.locale_configuration = ft.LocaleConfiguration(
+                supported_locales=[ft.Locale("pt", "BR"), ft.Locale("pt")],
+                current_locale=ft.Locale("pt", "BR")
             )
 
+        self.date_picker = ft.DatePicker(
+            value=hoje,
+            cancel_text="Cancelar",
+            confirm_text="Confirmar",
+            help_text="Selecione a data",
+            field_label_text="Digitar data",
+            error_format_text="Data inválida",
+            error_invalid_text="Data fora do intervalo",
+            on_change=self.ao_selecionar_data_picker
+        )
+        self.page.overlay.append(self.date_picker)
+
+        self.input_data = ft.TextField(
+            value=data_hoje_fmt,
+            width=165,
+            height=38,
+            text_align=ft.TextAlign.CENTER,
+            content_padding=ft.padding.all(6),
+            keyboard_type=ft.KeyboardType.DATETIME,
+            suffix=ft.IconButton(
+                icon=ft.Icons.CALENDAR_MONTH,
+                icon_size=18,
+                tooltip="Selecionar data",
+                on_click=lambda _: self.abrir_date_picker()
+            ),
+            on_change=self.ao_digitar_data,
+            on_blur=self.ao_confirmar_data,
+            on_submit=self.ao_confirmar_data
+        )
+
+        self.lista_controles = []
         self.tabela = ft.DataTable(
             columns=[
                 ft.DataColumn(ft.Text("Vencimento", weight="bold")),
                 ft.DataColumn(ft.Text("Valor", weight="bold")),
                 ft.DataColumn(ft.Text("Pagar", weight="bold")),
             ],
-            rows=rows_tabela,
+            rows=[],
             heading_row_color=ft.Colors.GREY_300,
             data_row_min_height=38,
             data_row_max_height=42,
             column_spacing=35,
+        )
+
+        self.container_tabela = ft.Container(
+            height=250,
+            alignment=ft.alignment.center
         )
 
         self.txt_total = ft.Text("R$ 0,00", weight="bold", size=14)
@@ -769,16 +923,17 @@ class janelaPagamento:
         self.txt_total_desconto = ft.Text("R$ 0,00", weight="bold", size=15, color=ft.Colors.GREEN_700)
         self.btn_pagar = ft.ElevatedButton("Pagar", on_click=self.salvar_pagamento)
 
-        # Calcular totais iniciais
-        self.recalcular_totais()
+        # Montar estado inicial da tabela e totais
+        self.atualizar_tabela_e_totais(atualizar_janela=False)
 
         conteudo_dialogo = ft.Container(
-            width=480, height=400,
+            width=480, height=440,
             content=ft.Column([
-                ft.Container(
-                    content=ft.Column([self.tabela], scroll=ft.ScrollMode.AUTO),
-                    height=250
-                ),
+                ft.Row([
+                    ft.Text("Data:", weight="bold", size=14),
+                    self.input_data
+                ], alignment=ft.MainAxisAlignment.START, vertical_alignment=ft.CrossAxisAlignment.CENTER),
+                self.container_tabela,
                 ft.Divider(height=10),
                 ft.Row([
                     ft.Text("Total:", weight="bold", size=14),
@@ -801,10 +956,12 @@ class janelaPagamento:
             actions=[
                 self.btn_pagar,
                 ft.ElevatedButton("Cancelar", on_click=self.fechar_janela)
-            ]
+            ],
+            on_dismiss=self.limpar_overlay
         )
 
-    def fechar_janela(self, e):
+    def fechar_janela(self, e=None):
+        self.limpar_overlay()
         self.janela.open = False
         self.page.update()
 
@@ -926,10 +1083,33 @@ class janelaAcontecimento:
         mascara_data = aplicarMascara('data')
         data_formatada = mascara_data.aplicar_mascara(data_inicial)
         
+        if not getattr(self.page, 'locale_configuration', None):
+            self.page.locale_configuration = ft.LocaleConfiguration(
+                supported_locales=[ft.Locale("pt", "BR"), ft.Locale("pt")],
+                current_locale=ft.Locale("pt", "BR")
+            )
+            
+        self.date_picker = ft.DatePicker(
+            cancel_text="Cancelar",
+            confirm_text="Confirmar",
+            help_text="Selecione a data",
+            field_label_text="Digitar data",
+            error_format_text="Data inválida",
+            error_invalid_text="Data fora do intervalo",
+            on_change=self.ao_selecionar_data_picker
+        )
+        self.page.overlay.append(self.date_picker)
+        
         self.input_data = ft.TextField(
             label="Data", 
             value=data_formatada,
-            width=150, 
+            width=165, 
+            suffix=ft.IconButton(
+                icon=ft.Icons.CALENDAR_MONTH,
+                icon_size=18,
+                tooltip="Selecionar data",
+                on_click=lambda _: self.abrir_date_picker()
+            ),
             on_change=mascara_data.on_change
         )
         
@@ -1074,7 +1254,39 @@ class janelaAcontecimento:
         self.janela.open = True
         self.page.update()
 
+    def abrir_date_picker(self):
+        try:
+            val = (self.input_data.value or "").strip()
+            dt = datetime.strptime(val, '%d/%m/%Y')
+            self.date_picker.value = dt
+        except Exception:
+            self.date_picker.value = datetime.now()
+        self.date_picker.open = True
+        self.page.update()
+
+    def ao_selecionar_data_picker(self, e):
+        val = self.date_picker.value
+        if val:
+            if isinstance(val, str):
+                try:
+                    dt = datetime.fromisoformat(val)
+                    nova_data = dt.strftime('%d/%m/%Y')
+                except Exception:
+                    nova_data = val
+            elif hasattr(val, 'strftime'):
+                nova_data = val.strftime('%d/%m/%Y')
+            else:
+                nova_data = str(val)
+
+            self.input_data.value = nova_data
+            self.input_data.update()
+
+    def limpar_overlay(self):
+        if hasattr(self, 'date_picker') and self.date_picker in self.page.overlay:
+            self.page.overlay.remove(self.date_picker)
+
     def fechar_janela(self, e=None):
+        self.limpar_overlay()
         self.janela.open = False
         self.page.update()
         if self.ao_fechar and callable(self.ao_fechar):
@@ -1097,9 +1309,9 @@ class janelaAcontecimento:
         
         try:
             dt = datetime.strptime(data_raw, '%d/%m/%Y')
-            data_db = dt.strftime('%Y-%m-%d')
+            data_db = dt.strftime('%Y/%m/%d')
         except ValueError:
-            self.txt_mensagem.value = "Por favor, insira uma data válida (DD/MM/YYYY)."
+            self.txt_mensagem.value = "Por favor, insira uma data válida (DD/MM/AAAA)."
             self.txt_mensagem.update()
             return
             

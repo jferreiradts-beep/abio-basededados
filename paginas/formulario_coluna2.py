@@ -326,7 +326,7 @@ class nomesCertificado():
         else:
             lista_nomes = [chk.data for chk in self.lista_checkboxes if chk.value]
 
-        self.page.cliente.rpc('atualizar_relacao_nm', {'p_tabela': 'rel_ass_esc', 'p_coluna_fixa': 'escopo_id',
+        self.page.cliente.rpc('atualizar_relacao_nm', {'p_insercao': 'nomes_certificado',
                                                         'p_valor_fixo': self.page.session.get('id'),
                                                         'p_ids_opostos': lista_nomes}).execute()
         self.fechar_janela_nomes(e)
@@ -433,13 +433,6 @@ class menuEscopo():
         
     def visualizar_produtos(self, e):
         tipo_escopo = self.dados['dados_fixos'].get('nome')
-        if tipo_escopo:
-            try:
-                res = self.page.cliente.table('tipo_escopo').select('nome').eq('id', int(tipo_escopo)).execute()
-                if res.data:
-                    self.page.session.set("nome_escopo", res.data[0]['nome'])
-            except Exception as err:
-                print(f"Erro ao buscar nome do escopo: {err}")
         verProdutos(self.page, tipo_escopo=tipo_escopo)
 
 
