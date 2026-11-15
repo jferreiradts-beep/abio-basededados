@@ -82,6 +82,15 @@ class botoesFormulario():
         self.ver_janela_nrotulo()
 
     def voltar(self, e):
+        # Fechar e limpar quaisquer diálogos ou overlays antes de navegar
+        if self.page.dialog:
+            self.page.dialog.open = False
+            self.page.dialog = None
+        for ctrl in list(self.page.overlay):
+            if hasattr(ctrl, "open"):
+                ctrl.open = False
+        self.page.overlay.clear()
+
         endereco_lista = self.page.voltar_dados.get('endereco', [])
         dados_lista    = self.page.voltar_dados.get('dados_pagina', [])
         retorno     = endereco_lista[-1] if endereco_lista else '/dashboard'

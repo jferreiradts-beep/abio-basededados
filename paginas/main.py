@@ -59,6 +59,13 @@ def main(page: ft.Page):
 
         try:
             page.clean()
+            if page.dialog:
+                page.dialog.open = False
+                page.dialog = None
+            for ctrl in list(page.overlay):
+                if hasattr(ctrl, "open"):
+                    ctrl.open = False
+            page.overlay.clear()
             
             if page.route == "/login":
                 LoginBase(page)

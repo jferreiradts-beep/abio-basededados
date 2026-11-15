@@ -1184,7 +1184,8 @@ class janelaAcontecimento:
                 self.btn_salvar,
                 self.btn_cancelar
             ],
-            actions_alignment=ft.MainAxisAlignment.END
+            actions_alignment=ft.MainAxisAlignment.END,
+            on_dismiss=self.fechar_janela
         )
         return self.janela
 
@@ -1296,7 +1297,10 @@ class janelaAcontecimento:
 
     def fechar_janela(self, e=None):
         self.limpar_overlay()
-        self.janela.open = False
+        if hasattr(self, 'janela') and self.janela:
+            self.janela.open = False
+            if self.janela in self.page.overlay:
+                self.page.overlay.remove(self.janela)
         self.page.update()
         if self.ao_fechar and callable(self.ao_fechar):
             self.ao_fechar()
