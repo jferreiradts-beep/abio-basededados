@@ -19,7 +19,7 @@ class quadroTabela():
         self.page = page
         self.ao_salvar = ao_salvar
         self.dados = list(dados['detalhe'])      # cópia mutável
-        self.sort_campo = 'matricula'            # ordenação inicial
+        self.sort_campo = 'validade'            # ordenação inicial
         self.sort_asc   = True
         self._ordenar()
         self._montar()
@@ -47,10 +47,19 @@ class quadroTabela():
     # ── ordenação ──────────────────────────────────────────────────
     def _ordenar(self):
         if self.sort_campo:
-            self.dados.sort(
-                key=lambda x: (x.get(self.sort_campo) or '').lower(),
-                reverse=not self.sort_asc
-            )
+            if self.sort_campo == 'validade':
+                self.dados.sort(
+                    key=lambda x: (
+                        (1 if not x.get('validade') else 0) if self.sort_asc else (1 if not x.get('validade') else 2),
+                        (x.get('validade') or '').lower()
+                    ),
+                    reverse=not self.sort_asc
+                )
+            else:
+                self.dados.sort(
+                    key=lambda x: (x.get(self.sort_campo) or '').lower(),
+                    reverse=not self.sort_asc
+                )
 
     def _on_sort(self, campo):
         """Chamado ao clicar no cabeçalho de uma coluna."""
@@ -59,7 +68,6 @@ class quadroTabela():
         else:
             self.sort_campo = campo
             self.sort_asc   = True              # nova coluna → ascendente
-        self._ordenar()
         self._atualizar()
 
     # ── linha da tabela ────────────────────────────────────────────
@@ -133,6 +141,7 @@ class quadroTabela():
         self.tabela = ft.Column([self._dt], scroll=ft.ScrollMode.AUTO)
 
     def _atualizar(self):
+        self._ordenar()
         # Atualiza cabeçalhos (setas)
         for i, (campo, titulo) in enumerate(self.COLUNAS):
             self._dt.columns[i].label = self._label_coluna(campo, titulo)
@@ -212,8 +221,8 @@ class grupoBase():
         self.carregar_nucleos_e_restaurar()
 
     def carregar_nucleos_e_restaurar(self):
-        resposta = self.page.cliente.table('nucleo').select('id, nome').order('nome').execute()
-        opcoes = [ft.dropdown.Option(key=str(n['id']), text=n['nome']) for n in resposta.data]
+        resposta = self.page.cliente.rpc('obter_opcoes', {'idx': 22, 'p_filtro': None}).execute()
+        opcoes = [ft.dropdown.Option(key=str(n['id']), text=n['opcao']) for n in resposta.data]
         self.dropdown_nucleo.options = opcoes
 
         # Restaurar estado se voltar para a página
@@ -226,8 +235,8 @@ class grupoBase():
             self.dropdown_nucleo.value = str(saved_nucleo_id)
             self.page.session.set("grupo_dashboard_nucleo_id", saved_nucleo_id)
             
-            resposta_grupos = self.page.cliente.table('grupo').select('id, nome').eq('nucleo_id', saved_nucleo_id).order('nome').execute()
-            opcoes_grupos = [ft.dropdown.Option(key=str(g['id']), text=g['nome']) for g in resposta_grupos.data]
+            resposta_grupos = self.page.cliente.rpc('obter_opcoes', {'idx': 35, 'p_filtro': saved_nucleo_id}).execute()
+            opcoes_grupos = [ft.dropdown.Option(key=str(g['id']), text=g['opcao']) for g in resposta_grupos.data]
             self.dropdown_grupo.options = opcoes_grupos
             
             if 'grupo_id' in self.page.avancar_dados:
@@ -259,8 +268,8 @@ class grupoBase():
         nucleo_id = self.dropdown_nucleo.value
         self.page.session.set("grupo_dashboard_nucleo_id", nucleo_id)
         if nucleo_id:
-            resposta = self.page.cliente.table('grupo').select('id, nome').eq('nucleo_id', nucleo_id).order('nome').execute()
-            opcoes = [ft.dropdown.Option(key=str(g['id']), text=g['nome']) for g in resposta.data]
+            resposta = self.page.cliente.rpc('obter_opcoes', {'idx': 35, 'p_filtro': nucleo_id}).execute()
+            opcoes = [ft.dropdown.Option(key=str(g['id']), text=g['opcao']) for g in resposta.data]
             self.dropdown_grupo.options = opcoes
             self.dropdown_grupo.value = None
             self.dropdown_grupo.update()

@@ -42,9 +42,9 @@ class DialogoEditarControle():
         self.janela.update()
 
     def salvar(self, e):
-        tabela = 'produtos' if self.tipo == 'produto' else 'grupo_prod'
         try:
-            self.cliente.table(tabela).update({'nome': self.nome_corrigido.value}).eq('id', self.controle_id).execute()
+            self.cliente.rpc('corrigir_grup_produ', {'produto': self.tipo == 'produto', \
+                'nome_corrigido': self.nome_corrigido.value, 'idx': self.controle_id}).execute()
             self.controle.value = self.nome_corrigido.value
             self.controle.update()
             self.fechar()
@@ -72,7 +72,8 @@ class DialogoEditarControle():
     def confirmar(self, e, txt_escreva):
         if txt_escreva == 'ELIMINAR':
             try:
-                self.cliente.table('produtos').delete().eq('id', self.controle_id).execute()
+                self.cliente.rpc('corrigir_grup_produ', {'produto': True, 'nome_corrigido': 'ELIMINAR', \
+                    'idx': -1 * self.controle_id}).execute()
                 self.atualizar_painel()
                 self.fechar()
             except Exception as error:
@@ -80,8 +81,9 @@ class DialogoEditarControle():
 
     def eliminar(self, e):
         self.conteiner_nome.height = 200
-        escopos = self.page.cliente.table('rel_esc_prod').select('*', count='exact').eq('produto_id', self.controle_id).execute()
-        txt_aviso = ft.Text(f"Confirmar a eliminação deste produto afetará {escopos.count} escopo{'s' if escopos.count > 1 else ''}. Para confirmar, escreva ELIMINAR abaixo e clique em Confirmar")
+        escopos = self.cliente.rpc('contar_relacao_nm', {'p_insercao': 'produto_certificado_contagem', 'p_valor_fixo': self.controle_id}).execute()
+        txt_aviso = ft.Text(f"Confirmar a eliminação deste produto afetará {escopos.data} escopo{'s' if escopos.data > 1 else ''}. " +\
+            "Para confirmar, escreva ELIMINAR abaixo e clique em Confirmar")
         txt_escreva = ft.TextField(label="ELIMINAR")
         self.conteiner_nome.content = ft.Column([self.nome_corrigido, ft.Divider(), txt_aviso, txt_escreva])
         self.conteiner_nome.update()
@@ -137,19 +139,20 @@ class janelaNovoProduto():
         self.ids_selecionados = ids_selecionados
 
     def salvar(self, e):
-        if self.tipo == 'produto':
-            tabela = 'produtos'
-            dados = {'nome': self.novo_nome.value, 'grupo_id': self.pertence.value}
-        else:
-            tabela = 'grupo_prod'
-            tipo = self.page.avancar_dados.get('tipo_escopo') or self.page.session.get('tipo_escopo')
-            dados = {'nome': self.novo_nome.value, 'tipo_escopo_id': tipo}
+        pertence_final = self.pertence.value if self.tipo == 'produto' else \
+            self.page.avancar_dados.get('tipo_escopo') or self.page.session.get('tipo_escopo')
+        dados = {
+            'produto': self.tipo == 'produto',
+            'nome_corrigido': self.novo_nome.value,
+            'pertence': pertence_final
+        }
 
         try:
-            resposta = self.cliente.table(tabela).insert(dados).execute()
+            resposta = self.cliente.rpc(f'corrigir_grup_produ', dados).execute()
 
             # Marca o novo produto como selecionado na lista local
             if self.tipo == 'produto' and resposta.data and self.ids_selecionados is not None:
+                
                 novo_id = resposta.data[0]['id']
                 self.ids_selecionados.add(novo_id)
 
@@ -489,7 +492,7 @@ class linhaBotoes():
     def salvar_produtos(self, e):
         produtos = self.verificar_selecionados()
         try:
-            self.page.cliente.rpc('atualizar_relacao_nm', {'p_tabela': 'rel_esc_prod', 'p_coluna_fixa': 'escopo_id',
+            self.page.cliente.rpc('atualizar_relacao_nm', {'p_insercao': 'produtos_certificado',
                                                             'p_valor_fixo': self.page.session.get('id'),
                                                             'p_ids_opostos': produtos}).execute()
             aviso(self.page, "Produtos salvos com sucesso")
@@ -523,7 +526,7 @@ class dadosProdutos():
         self.page = page
         self.cliente = page.cliente
         # Prioridade: avancar_dados (vindo de verProdutos) > session (fluxo directo)
-        self.tipo_escopo = page.avancar_dados.get('tipo_escopo') \
+        self.tipo_escopo = page.avancar_dados.get('tipo_escopo', None) \
                            or page.session.get("tipo_escopo")
         _id_raw = page.session.get("id")
         self.id_escopo = int(_id_raw) if _id_raw not in (None, '0', 0) else _id_raw
@@ -589,6 +592,7 @@ def iniciar_painel_produtos(tipo_escopo = 3, id_escopo = 1):
         page.cliente = login_supabase()
         page.session.set("tipo_escopo", tipo_escopo)
         page.session.set("id", id_escopo)
+        page.avancar_dados = {"tipo_escopo": tipo_escopo, "id": id_escopo}
         
         baseProdutos(page)
     return main

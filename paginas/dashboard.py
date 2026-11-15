@@ -13,78 +13,7 @@ import tempfile
 import math
 
 
-class janelaNovaMatricula():
-    def __init__(self, page, grupo_id):
-        self.page = page
 
-        # Criar campos
-        grupos = self.page.cliente.table('grupo').select('id, nome').execute()
-        lista_grupos = []
-        for grupo in grupos.data:
-            lista_grupos.append(ft.dropdown.Option(key = grupo['id'], text = grupo['nome']))
-
-        self.grupo = ft.Dropdown(label='Grupo', value=grupo_id, options=lista_grupos)
-        self.matricula = ft.TextField(label='Matricula')
-        self.mensagem = ft.Text(value="", size=10, color="red")
-        
-        self.janela= ft.AlertDialog(
-            title=ft.Text("Nova matricula"),
-            content=ft.Container(
-                width=350, height=150,
-                content=ft.Column([
-                    self.grupo, 
-                    self.matricula,
-                    ft.Row([self.mensagem])
-                ])
-            ),
-            actions=[
-                ft.TextButton("Cancelar", on_click=self.fechar_janela_nova_matricula),
-                ft.TextButton("Criar", on_click=self.salvar_nova_matricula)
-            ]
-        )
-
-        self.page.overlay.append(self.janela)
-        self.janela.open = True
-        self.page.update()
-
-    def fechar_janela_nova_matricula(self, e):
-        self.janela.open = False
-        self.page.update()
-
-    def salvar_nova_matricula(self, e):
-        self.mensagem.value = ""
-        self.janela.update()
-        
-        # Testar matricula
-        if not re.fullmatch(r'^\d{2}-\d{3}$', self.matricula.value):
-            self.mensagem.value = "Matricula inválida"
-            self.janela.update()
-            return
-        
-        # Salvar matricula
-        try:
-            resposta = self.page.cliente.table('matricula').insert({
-                'grupo_id': self.grupo.value,
-                'nome': self.matricula.value
-            }).execute()
-
-            novo_id = resposta.data[0]['id']
-
-            self.page.session.set('id', novo_id)
-            
-            self.janela.open = False
-            self.page.update()
-            
-            self.page.go('/matricula')
-
-        except Exception as error:
-            print("ERROR", error)
-            erro_str = str(error).lower()
-            if '23505' in erro_str or 'duplicate key' in erro_str:
-                self.mensagem.value = f"A matrícula {self.matricula.value} já está atribuída."
-            else:
-                self.mensagem.value = f"Erro ao salvar matricula: {error}"
-            self.janela.update()
 
 class gridCards:
     def __init__(self, valores):
@@ -329,11 +258,13 @@ class colunaIndividual:
         if self.nome == 'matricula':
             self.page.voltar_dados['endereco'].append(self.page.route)
             self.page.voltar_dados['dados_pagina'].append({'dashboard_filtro': self.filtro})
-            if id_selecionado == '0':
-                janelaNovaMatricula(self.page, self.filtro['grupo']['id'])
-            else:
-                self.page.session.set('id', id_selecionado)
-                self.page.go('/matricula')
+            
+            # Quando for novo (0), passamos o grupo_id para pré-preencher
+            self.page.avancar_dados.update({'grupo_id': self.filtro['grupo']['id']})
+            
+            id_final = str(int(id_selecionado)) if id_selecionado != '0' else '0'
+            self.page.session.set('id', id_final)
+            self.page.go('/matricula')
             return
 
         # Para nucleo, grupo e escopo: tipo = nome
