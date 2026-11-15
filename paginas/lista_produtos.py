@@ -139,11 +139,13 @@ class janelaNovoProduto():
         self.ids_selecionados = ids_selecionados
 
     def salvar(self, e):
-        if self.tipo == 'produto':
-            dados = {'produto': True, 'nome_corrigido': self.novo_nome.value, 'pertence': self.pertence.value}
-        else:
-            tipo = self.page.avancar_dados.get('tipo_escopo') or self.page.session.get('tipo_escopo')
-            dados = {'produto': False, 'nome_corrigido': self.novo_nome.value, 'pertence': tipo}
+        pertence_final = self.pertence.value if self.tipo == 'produto' else \
+            self.page.avancar_dados.get('tipo_escopo') or self.page.session.get('tipo_escopo')
+        dados = {
+            'produto': self.tipo == 'produto',
+            'nome_corrigido': self.novo_nome.value,
+            'pertence': pertence_final
+        }
 
         try:
             resposta = self.cliente.rpc(f'corrigir_grup_produ', dados).execute()

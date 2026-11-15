@@ -542,11 +542,20 @@ class MatriculaBase:
         # Só agora os controles estão na página: podemos iniciar o lazy load dos dropdowns
         self.coluna_esq.iniciar_lazy_load()
 
-    def ao_acontecimento_salvo(self, novos_acontecimentos):
-        """Callback chamado após salvar acontecimento com sucesso via RPC.
+    def ao_acontecimento_salvo(self, novos_acontecimentos=None, id_eliminado=None):
+        """Callback chamado após salvar ou eliminar acontecimento com sucesso via RPC.
         Atualiza dados_completos e a aba de acontecimentos sem recarregar a página."""
-        self.dados_completos["acontecimentos"] = novos_acontecimentos
-        self.coluna_dir.atualizar_acontecimentos(novos_acontecimentos)
+        if id_eliminado is not None:
+            novos_acontecimentos = [
+                a for a in self.dados_completos.get("acontecimentos", [])
+                if str(a.get("id")) != str(id_eliminado)
+            ]
+
+        if novos_acontecimentos is not None:
+            self.dados_completos["acontecimentos"] = novos_acontecimentos
+            self.coluna_dir.atualizar_acontecimentos(novos_acontecimentos)
+        else:
+            self.recarregar()
         
     def salvar(self, e):
         """Guarda apenas os dados_fixos da matrícula via RPC."""
@@ -1294,9 +1303,17 @@ class janelaAcontecimento:
 
     def eliminar_acontecimento(self, e):
         try:
-            self.page.cliente.table('acontecimentos').delete().eq('id', self.id_acontecimento).execute()
-            if self.ao_salvar:
-                self.ao_salvar()
+            resposta = self.page.cliente.rpc('eliminar_acontecimento', {'p_id': self.id_acontecimento}).execute()
+            if resposta and resposta.data is False:
+                self.txt_mensagem.value = "Não foi possível eliminar o acontecimento."
+                self.txt_mensagem.update()
+                return
+
+            if self.ao_salvar and callable(self.ao_salvar):
+                try:
+                    self.ao_salvar(id_eliminado=self.id_acontecimento)
+                except TypeError:
+                    self.ao_salvar()
             self.fechar_janela()
         except Exception as ex:
             self.txt_mensagem.value = f"Erro ao eliminar: {ex}"

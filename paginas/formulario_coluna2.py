@@ -124,9 +124,14 @@ class verAcontecimentos():
             ao_fechar=self.ao_fechar_edicao
         )
 
-    def ao_acontecimento_salvo(self, novos_dados=None):
+    def ao_acontecimento_salvo(self, novos_dados=None, id_eliminado=None):
         self.modificado = True
-        if novos_dados and isinstance(novos_dados, list) and len(novos_dados) > 0 and isinstance(novos_dados[0], dict) and 'tipo' in novos_dados[0]:
+        if id_eliminado is not None and hasattr(self, 'acontecimentos_dados') and self.acontecimentos_dados:
+            self.acontecimentos_dados = [
+                a for a in self.acontecimentos_dados
+                if str(a.get('id')) != str(id_eliminado)
+            ]
+        elif novos_dados and isinstance(novos_dados, list) and len(novos_dados) > 0 and isinstance(novos_dados[0], dict) and 'tipo' in novos_dados[0]:
             self.acontecimentos_dados = novos_dados
         else:
             self.acontecimentos_dados = self.obter_dados()
