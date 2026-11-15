@@ -1177,6 +1177,7 @@ class janelaAcontecimento:
         titulo_dialog = "Editar Acontecimento" if self.id_acontecimento != 0 else "Novo Acontecimento"
         
         self.janela = ft.AlertDialog(
+            modal=True,
             title=ft.Text(titulo_dialog),
             content=layout_conteudo,
             actions=[
@@ -1184,8 +1185,7 @@ class janelaAcontecimento:
                 self.btn_salvar,
                 self.btn_cancelar
             ],
-            actions_alignment=ft.MainAxisAlignment.END,
-            on_dismiss=self.fechar_janela
+            actions_alignment=ft.MainAxisAlignment.END
         )
         return self.janela
 
@@ -1299,8 +1299,6 @@ class janelaAcontecimento:
         self.limpar_overlay()
         if hasattr(self, 'janela') and self.janela:
             self.janela.open = False
-            if self.janela in self.page.overlay:
-                self.page.overlay.remove(self.janela)
         self.page.update()
         if self.ao_fechar and callable(self.ao_fechar):
             self.ao_fechar()

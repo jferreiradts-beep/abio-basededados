@@ -40,6 +40,7 @@ class escopoNaoSalvo():
             self.aviso = ft.Text(aviso)
         
         return ft.AlertDialog(
+            modal=True,
             title=ft.Text("Atenção!"),
             content=ft.Container(
                 width=300, height=150,
@@ -47,8 +48,7 @@ class escopoNaoSalvo():
             ),
             actions=[
                 ft.TextButton("Fechar", on_click=self.fechar_janela)
-            ],
-            on_dismiss=self.fechar_janela
+            ]
         )
         
 
@@ -140,8 +140,6 @@ class verAcontecimentos():
 
     def ao_fechar_edicao(self):
         if hasattr(self, 'janela_acontecimentos') and self.janela_acontecimentos:
-            if self.janela_acontecimentos not in self.page.overlay:
-                self.page.overlay.append(self.janela_acontecimentos)
             self.janela_acontecimentos.open = True
             self.page.update()
 
@@ -151,8 +149,6 @@ class verAcontecimentos():
 
         if hasattr(self, 'janela_acontecimentos') and self.janela_acontecimentos:
             self.janela_acontecimentos.open = False
-            if self.janela_acontecimentos in self.page.overlay:
-                self.page.overlay.remove(self.janela_acontecimentos)
         self.page.update()
 
     def montar_janela(self):
@@ -196,6 +192,7 @@ class verAcontecimentos():
         btn_fechar = ft.TextButton("Fechar", on_click=self.fechar_janela_acontecimentos)
 
         return ft.AlertDialog(
+            modal=True,
             title=ft.Text("Acontecimentos"),
             content=ft.Container(
                 width=580, height=400,
@@ -206,13 +203,10 @@ class verAcontecimentos():
                 btn_novo_ac,
                 btn_fechar
             ],
-            actions_alignment=ft.MainAxisAlignment.END,
-            on_dismiss=self.fechar_janela_acontecimentos
+            actions_alignment=ft.MainAxisAlignment.END
         )
 
     def exibir_janela_contecimentos(self):
-        if hasattr(self, 'janela_acontecimentos') and self.janela_acontecimentos in self.page.overlay:
-            self.page.overlay.remove(self.janela_acontecimentos)
         self.janela_acontecimentos = self.montar_janela()
         self.page.overlay.append(self.janela_acontecimentos)
         self.janela_acontecimentos.open = True
@@ -253,6 +247,7 @@ class verProdutos():
 
         # Criar janela
         janela = ft.AlertDialog(
+            modal=True,
             title=ft.Text(self.page.session.get("nome_escopo")),
             content=ft.Container(
                 width=560, height=400,
@@ -261,8 +256,7 @@ class verProdutos():
             actions=[
                 ft.TextButton("Editar", on_click=self.editar_janela_produtos),
                 ft.TextButton("Ok", on_click=self.cancelar_janela_produtos)
-            ],
-            on_dismiss=self.cancelar_janela_produtos
+            ]
         )
 
         return janela
@@ -275,13 +269,9 @@ class verProdutos():
     def cancelar_janela_produtos(self, e=None):
         if hasattr(self, 'janela_produtos') and self.janela_produtos:
             self.janela_produtos.open = False
-            if self.janela_produtos in self.page.overlay:
-                self.page.overlay.remove(self.janela_produtos)
         self.page.update()
 
     def exibir_janela_produtos(self):
-        if hasattr(self, 'janela_produtos') and self.janela_produtos in self.page.overlay:
-            self.page.overlay.remove(self.janela_produtos)
         self.janela_produtos = self.montar_janela()
         self.page.overlay.append(self.janela_produtos)
         self.janela_produtos.open = True
@@ -289,7 +279,6 @@ class verProdutos():
 
     def fechar_janela_produtos(self, e=None):
         self.cancelar_janela_produtos(e)
-        self.page.update()
 
 class nomesCertificado():
     def __init__(self, page):
@@ -317,6 +306,7 @@ class nomesCertificado():
 
         self.mensagem = ft.Text('É necessário selecionar pelo menos um nome para o certificado.')
         return ft.AlertDialog(
+            modal=True,
             title=ft.Text("Nomes no certificado"),
             content=ft.Container(
                 width=400, height=250,
@@ -329,15 +319,12 @@ class nomesCertificado():
             actions=[
                 ft.TextButton("Salvar", on_click=self.salvar_janela_nomes),
                 ft.TextButton("Fechar", on_click=self.fechar_janela_nomes)
-            ],
-            on_dismiss=self.fechar_janela_nomes
+            ]
         )
 
     def fechar_janela_nomes(self, e=None):
         if hasattr(self, 'janela_nomes') and self.janela_nomes:
             self.janela_nomes.open = False
-            if self.janela_nomes in self.page.overlay:
-                self.page.overlay.remove(self.janela_nomes)
         self.page.update()
 
     def salvar_janela_nomes(self, e):
@@ -356,8 +343,6 @@ class nomesCertificado():
         self.fechar_janela_nomes(e)
 
     def exibir_janela_nomes_certificados(self):
-        if hasattr(self, 'janela_nomes') and self.janela_nomes in self.page.overlay:
-            self.page.overlay.remove(self.janela_nomes)
         self.janela_nomes = self.montar_janela()
         self.page.overlay.append(self.janela_nomes)
         self.janela_nomes.open = True
