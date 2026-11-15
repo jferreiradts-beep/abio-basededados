@@ -83,9 +83,6 @@ class botoesFormulario():
 
     def voltar(self, e):
         # Fechar e limpar quaisquer diálogos ou overlays antes de navegar
-        if self.page.dialog:
-            self.page.dialog.open = False
-            self.page.dialog = None
         for ctrl in list(self.page.overlay):
             if hasattr(ctrl, "open"):
                 ctrl.open = False
