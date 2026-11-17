@@ -152,9 +152,7 @@ class janelaNovoProduto():
 
             # Marca o novo produto como selecionado na lista local
             if self.tipo == 'produto' and resposta.data and self.ids_selecionados is not None:
-                
-                novo_id = resposta.data[0]['id']
-                self.ids_selecionados.add(novo_id)
+                self.ids_selecionados.add(resposta.data)
 
             self.cancelar(e)
             self.atualizar_painel()
