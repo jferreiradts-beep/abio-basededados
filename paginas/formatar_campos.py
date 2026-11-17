@@ -3,8 +3,17 @@ import re
 class aplicarMascara():
     """Aplica uma máscara de formatação a um valor.
     Se mascaras=None, o método aplicar_mascara devolve o valor inalterado (no-op).
+    Se mascaras contiver '=', o método salvar_limpo preserva a formatação da máscara (ex: '=##-###').
     """
     def __init__(self, mascaras: str | None):
+        self.salvar_formatado = False
+
+        if mascaras:
+            mascaras = mascaras.strip()
+            if '=' in mascaras:
+                self.salvar_formatado = True
+                mascaras = mascaras.replace('=', '').strip()
+
         if mascaras == 'data':
             self.aplicar_mascara = self._aplicar_mascara_data
             self.salvar_limpo = self._salvar_limpo_data
@@ -13,7 +22,7 @@ class aplicarMascara():
             self.mascaras = sorted(mascaras.split('; '), key=lambda x: x.count('#'))
             self.c_mascaras = [x.count('#') for x in self.mascaras]
             self.aplicar_mascara = self._aplicar_mascara_texto
-            self.salvar_limpo = self._salvar_limpo_texto
+            self.salvar_limpo = self._aplicar_mascara_texto if self.salvar_formatado else self._salvar_limpo_texto
             self.on_change = self._on_change_texto   # formata o display em tempo real
         else:
             self.aplicar_mascara = lambda valor: valor  # no-op
