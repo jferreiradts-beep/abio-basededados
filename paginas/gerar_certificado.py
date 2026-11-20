@@ -6,8 +6,7 @@ from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib import colors
 from pypdf import PdfReader, PdfWriter
 from io import BytesIO
-from datetime import datetime, timedelta
-from dateutil.relativedelta import relativedelta
+from datetime import datetime
 import unicodedata
 import os
 
@@ -44,7 +43,8 @@ class obterDados:
             'municipio': 'Município',
             'estado': 'Estado',
             'tipo_certificado': 'Tipo de Certificado',
-            'data_emissao': 'Data de Emissão'
+            'data_emissao': 'Data de Emissão',
+            'data_validade': 'Data de Validade'
         }
         
         faltando = []
@@ -180,7 +180,7 @@ class montarCertificado():
 
         emissao = datetime.strptime(self.dados.capa['data_emissao'], '%Y-%m-%d')
         CaixaTexto(f"Data de Emissão: {emissao.strftime('%d/%m/%Y')}", 700, fonte='Times-Bold', pontos=14).fazer_caixa(can, 60, 80, 'esquerda')
-        validade =  emissao + relativedelta(years=1) - timedelta(days=1)
+        validade = datetime.strptime(self.dados.capa['data_validade'], '%Y-%m-%d')
         CaixaTexto(f"Data de Validade: {validade.strftime('%d/%m/%Y')}", 700, fonte='Times-Bold', pontos=14).fazer_caixa(can, 60, 80, 'direita')
         
         linha = CaixaTexto(self.nome_assinante, 700, fonte='Times-Bold', pontos=14).fazer_caixa(can, 60, 80, 'centro')
@@ -189,7 +189,7 @@ class montarCertificado():
     def criar_canvas_cab_produtos(self, can):
         # Dados à esquerda: matrícula e validade
         linha = CaixaTexto(f"Matrícula: {self.dados.capa['matricula']}", 700, pontos=10).fazer_caixa(can, 60, 520, 'esquerda')
-        validade = datetime.strptime(self.dados.capa['data_emissao'], '%Y-%m-%d') + relativedelta(years=1) - timedelta(days=1)
+        validade = datetime.strptime(self.dados.capa['data_validade'], '%Y-%m-%d')
         linha = CaixaTexto(f"Validade: {validade.strftime('%d/%m/%Y')}", 700, pontos=10).fazer_caixa(can, 60, linha, 'esquerda')
 
         # Dados à direita: id
@@ -289,8 +289,7 @@ class montarFRI():
         caixa_escopo.fazer_caixa(can, largura, linha)
         largura += caixa_escopo.largura_texto + 20
 
-        emissao = datetime.strptime(self.dados.capa['data_emissao'], '%Y-%m-%d')
-        validade =  emissao + relativedelta(years=1) - timedelta(days=1)
+        validade = datetime.strptime(self.dados.capa['data_validade'], '%Y-%m-%d')
         caixa_validade_rotulo = CaixaTexto('Validade:', 410, fonte='Times-Bold', pontos=12)
         caixa_validade_rotulo.fazer_caixa(can, largura, linha)
         largura += caixa_validade_rotulo.largura_texto + 5

@@ -1123,6 +1123,7 @@ class janelaAcontecimento:
         )
         
         lista_tipos = self.dados_acontecimento.get('tipos') or []
+        print(lista_tipos)
         lista_tipos_ordenados = sorted(lista_tipos, key=lambda x: x.get('ordem', 0))
         
         opcoes_tipo = [

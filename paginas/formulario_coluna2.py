@@ -459,7 +459,7 @@ class menuEscopo():
     def montar_menu(self):
         dados = self.obter_dados()
         self.txt_validade = ft.Text(self._fmt_data(dados['validade']), weight="bold")
-        self.txt_ultima_atividade = ft.Text(dados['ultima_atualizacao'], weight="bold")
+        self.txt_ultima_atividade = ft.Text(dados['ultima_atualizacao'][:25], weight="bold")
 
         return ft.Column([
             ft.Text('Escopo é a descrição formal das atividades orgânicas que serão avaliadas pelo SPG para fins de conformidade.'),
