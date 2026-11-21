@@ -4,6 +4,7 @@ import numpy as np
 
 import os
 import re
+from datetime import datetime, date
 import geopandas as gpd
 import matplotlib
 matplotlib.use('Agg') # <--- Evita erros de GUI/Thread no Flet
@@ -16,8 +17,9 @@ import math
 
 
 class gridCards:
-    def __init__(self, valores):
+    def __init__(self, valores, on_double_click_card=None):
         self.valores = valores
+        self.on_double_click_card = on_double_click_card
         self.cards = self.criar_cards()
         
 
@@ -34,18 +36,29 @@ class gridCards:
             )
             self.textos.append(texto_valor)
 
-            card = ft.Container(
+            card_container = ft.Container(
                 content=ft.Column([
                     ft.Text(self.valores['c'+str(i+1)]['texto'], size=14, text_align=ft.TextAlign.CENTER),
                     texto_valor
                     ],
                     alignment=ft.MainAxisAlignment.CENTER,
                     horizontal_alignment=ft.CrossAxisAlignment.CENTER),
-                    width=127,
-                    height=altura,
-                    bgcolor=ft.Colors.GREEN_100, 
-                    border_radius=10,
-                    padding=10)
+                width=127,
+                height=altura,
+                bgcolor=ft.Colors.GREEN_100, 
+                border_radius=10,
+                padding=10,
+                tooltip="Duplo clique para detalhar" if i >= 4 else None
+            )
+
+            if i >= 4:
+                card = ft.GestureDetector(
+                    content=card_container,
+                    mouse_cursor=ft.MouseCursor.CLICK,
+                    on_double_tap=lambda e, chave=f'c{i+1}': self.on_double_click_card(chave) if self.on_double_click_card else None
+                )
+            else:
+                card = card_container
 
             cards.append(card)
         return cards
@@ -453,6 +466,10 @@ class dadosDashboard:
         vencidos = dados_filtrados.loc[dados_filtrados['validade'] <= hoje, 'id_escopo'].nunique()
         escopos_1m = dados_filtrados.loc[(dados_filtrados['validade'] > hoje) & (dados_filtrados['validade'] <= um_mes), 'id_escopo'].nunique()
         escopos_4m = dados_filtrados.loc[(dados_filtrados['validade'] > um_mes) & (dados_filtrados['validade'] <= quatro_meses), 'id_escopo'].nunique()
+        if 'situacao' in dados_filtrados.columns:
+            inativos = dados_filtrados.loc[dados_filtrados['situacao'].isin(['inativo', 'suspenso', 'cancelado']), 'id_escopo'].nunique()
+        else:
+            inativos = 0
      
         # Retornar os valores
         return {
@@ -463,8 +480,42 @@ class dadosDashboard:
             'c5': {'texto': 'Escopos a vencer (4m)', 'valor': escopos_4m},
             'c6': {'texto': 'Escopos a vencer (1m)', 'valor': escopos_1m},
             'c7': {'texto': 'Escopos vencidos', 'valor': vencidos},
-            'c8': {'texto': 'Escopos\ninativos', 'valor': 0}
+            'c8': {'texto': 'Escopos\ninativos', 'valor': inativos}
         }
+
+    def obter_dados_filtrados(self, filtro):
+        df = self.dados.copy()
+        if not filtro:
+            return df
+
+        def extrair_id(chave):
+            val = filtro.get(chave, {}).get('id', 0)
+            try:
+                return int(val)
+            except (ValueError, TypeError):
+                return 0
+
+        id_escopo = extrair_id('escopo')
+        if id_escopo != 0:
+            return df[df['id_escopo'] == id_escopo].copy()
+
+        id_uprod = extrair_id('uprod')
+        if id_uprod != 0:
+            return df[df['id_uprod'] == id_uprod].copy()
+
+        id_mat = extrair_id('matricula')
+        if id_mat != 0:
+            return df[df['id_matricula'] == id_mat].copy()
+
+        id_grp = extrair_id('grupo')
+        if id_grp != 0:
+            return df[df['id_grupo'] == id_grp].copy()
+
+        id_nuc = extrair_id('nucleo')
+        if id_nuc != 0:
+            return df[df['id_nucleo'] == id_nuc].copy()
+
+        return df
 
     def dados_colunas(self, dados_filtrados, coluna):
         dados = dados_filtrados[[f'id_{coluna}', coluna]].copy()
@@ -509,6 +560,216 @@ class dadosDashboard:
         return dados_pcoluna
         
 
+class janelaDetalhesCard:
+    COLUNAS = [
+        ('nucleo', 'Núcleo'),
+        ('grupo', 'Grupo'),
+        ('matricula', 'Matrícula'),
+        ('uprod', 'Unid. Produção'),
+        ('escopo', 'Escopo'),
+        ('validade', 'Validade'),
+    ]
+
+    def __init__(self, page, titulo, dados, filtro_dashboard):
+        self.page = page
+        self.titulo = titulo
+        self.dados = list(dados)
+        self.filtro_dashboard = filtro_dashboard
+
+        self.sort_campo = 'validade'
+        self.sort_asc = True
+
+        self._ordenar()
+        self._montar()
+        self.janela = self._montar_dialogo()
+
+    def _ordenar(self):
+        if self.sort_campo:
+            if self.sort_campo == 'validade':
+                self.dados.sort(
+                    key=lambda x: (
+                        (1 if not x.get('validade') else 0) if self.sort_asc else (1 if not x.get('validade') else 2),
+                        str(x.get('validade') or '').lower()
+                    ),
+                    reverse=not self.sort_asc
+                )
+            elif self.sort_campo == 'matricula':
+                def chave_matricula(x):
+                    v = str(x.get('matricula') or '')
+                    try:
+                        return (0, int(v))
+                    except ValueError:
+                        return (1, v.lower())
+                self.dados.sort(key=chave_matricula, reverse=not self.sort_asc)
+            else:
+                self.dados.sort(
+                    key=lambda x: str(x.get(self.sort_campo) or '').lower(),
+                    reverse=not self.sort_asc
+                )
+
+    def _on_sort(self, campo):
+        if self.sort_campo == campo:
+            self.sort_asc = not self.sort_asc
+        else:
+            self.sort_campo = campo
+            self.sort_asc = True
+        self._atualizar()
+
+    def _label_coluna(self, campo, titulo):
+        ativo = (campo == self.sort_campo)
+        seta = (' ↑' if not self.sort_asc else ' ↓') if ativo else ''
+        return ft.Text(titulo + seta, weight=ft.FontWeight.BOLD, size=13, color=ft.Colors.GREEN_900)
+
+    def _montar_coluna(self, campo, titulo):
+        def handler(e, c=campo):
+            if c:
+                self._on_sort(c)
+        label = self._label_coluna(campo, titulo)
+        return ft.DataColumn(label=label, on_sort=handler if campo else None)
+
+    def _montar_linha(self, item):
+        def truncar(texto, limite=30):
+            t = str(texto or '')
+            return t[:limite - 3] + "..." if len(t) > limite else t
+
+        def celula_clicavel(texto_str, tipo, tip_nome):
+            texto_completo = str(texto_str or '')
+            texto_exibido = truncar(texto_completo, 30)
+            dica = f"{texto_completo}\n(Duplo clique para abrir formulário de {tip_nome})" if len(texto_completo) > 30 else f"Duplo clique para abrir formulário de {tip_nome}"
+            return ft.DataCell(
+                ft.GestureDetector(
+                    content=ft.Container(
+                        content=ft.Text(texto_exibido, size=13, color=ft.Colors.BLACK),
+                        padding=ft.padding.symmetric(vertical=6, horizontal=4),
+                        tooltip=dica
+                    ),
+                    mouse_cursor=ft.MouseCursor.CLICK,
+                    on_double_tap=lambda e, t=tipo, it=item: self.abrir_formulario(t, it)
+                )
+            )
+
+        return ft.DataRow(cells=[
+            celula_clicavel(str(item.get('nucleo') or ''), 'nucleo', 'núcleo'),
+            celula_clicavel(str(item.get('grupo') or ''), 'grupo', 'grupo'),
+            celula_clicavel(str(item.get('matricula') or ''), 'matricula', 'matrícula'),
+            celula_clicavel(str(item.get('uprod') or ''), 'uprod', 'unidade de produção'),
+            celula_clicavel(str(item.get('escopo') or ''), 'escopo', 'escopo'),
+            celula_clicavel(str(item.get('validade_formatada') or ''), 'escopo', 'escopo'),
+        ])
+
+    def _montar(self):
+        if not self.dados:
+            self.tabela = ft.Container(
+                content=ft.Text("Nenhum registro encontrado para este filtro.", italic=True, size=14, color=ft.Colors.GREY_600),
+                alignment=ft.alignment.center,
+                height=200
+            )
+            return
+
+        self._dt = ft.DataTable(
+            columns=[self._montar_coluna(c, t) for c, t in self.COLUNAS],
+            rows=[self._montar_linha(item) for item in self.dados],
+            column_spacing=24,
+            heading_row_height=40,
+            data_row_min_height=36,
+            data_row_max_height=44,
+        )
+        self.tabela = ft.Column(
+            [
+                ft.Row([self._dt], scroll=ft.ScrollMode.AUTO)
+            ],
+            scroll=ft.ScrollMode.AUTO,
+            expand=True
+        )
+
+    def _atualizar(self):
+        if not hasattr(self, '_dt') or not self._dt:
+            return
+        self._ordenar()
+        for i, (campo, titulo) in enumerate(self.COLUNAS):
+            self._dt.columns[i].label = self._label_coluna(campo, titulo)
+        self._dt.rows = [self._montar_linha(item) for item in self.dados]
+        self._dt.update()
+
+    def _montar_dialogo(self):
+        return ft.AlertDialog(
+            title=ft.Column([
+                ft.Text(f"{self.titulo} ({len(self.dados)})", size=18, weight=ft.FontWeight.BOLD, color=ft.Colors.GREEN_900),
+                ft.Text("Dê duplo clique sobre um item para abrir seu formulário correspondente.", size=12, italic=True, color=ft.Colors.GREY_700),
+            ], spacing=2),
+            content=ft.Container(
+                width=960,
+                height=450,
+                content=self.tabela
+            ),
+            actions=[
+                ft.ElevatedButton("Imprimir", icon=ft.Icons.PRINT, on_click=self.imprimir),
+                ft.ElevatedButton("Fechar", on_click=self.fechar)
+            ]
+        )
+
+    def imprimir(self, e=None):
+        try:
+            from gerar_certificado import montarRelatorioCardEscopos
+            relatorio = montarRelatorioCardEscopos(self.titulo, self.dados)
+            url_pdf = relatorio.imprimir()
+            self.page.launch_url(url=url_pdf, web_window_name="_blank")
+        except Exception as erro:
+            from escudo_supabase import aviso
+            aviso(self.page, f"Erro ao gerar o relatório: {str(erro)}")
+
+    def fechar(self, e=None):
+        if self.janela:
+            self.janela.open = False
+            self.janela.update()
+
+    def exibir(self):
+        if self.janela in self.page.overlay:
+            self.page.overlay.remove(self.janela)
+        self.page.overlay.append(self.janela)
+        self.janela.open = True
+        self.page.update()
+
+    def abrir_formulario(self, tipo, item):
+        self.fechar()
+
+        id_nucleo = item.get('id_nucleo')
+        id_grupo = item.get('id_grupo')
+        id_matricula = item.get('id_matricula')
+        id_uprod = item.get('id_uprod')
+        id_escopo = item.get('id_escopo')
+
+        self.page.voltar_dados['endereco'].append(self.page.route)
+        self.page.voltar_dados['dados_pagina'].append({'dashboard_filtro': self.filtro_dashboard})
+
+        if tipo == 'matricula':
+            if id_grupo:
+                self.page.avancar_dados.update({'grupo_id': id_grupo})
+            id_final = str(int(id_matricula)) if id_matricula else '0'
+            self.page.session.set('id', id_final)
+            self.page.go('/matricula')
+            return
+
+        self.page.session.set('tipo', tipo)
+        avancar_extras = {
+            'grupo': {'nucleo_id': id_nucleo},
+            'uprod': {'matricula_id': id_matricula},
+            'escopo': {'uprod_id': id_uprod},
+        }
+        self.page.avancar_dados.update({k: v for k, v in avancar_extras.get(tipo, {}).items() if v is not None})
+
+        id_map = {
+            'nucleo': id_nucleo,
+            'grupo': id_grupo,
+            'uprod': id_uprod,
+            'escopo': id_escopo,
+        }
+        id_selecionado = id_map.get(tipo)
+        id_final = str(int(id_selecionado)) if id_selecionado else '0'
+        self.page.session.set('id', id_final)
+        self.page.go('/formulario')
+
+
 class DashboardBase:
     def __init__(self, page: ft.Page):
         self.page = page
@@ -538,7 +799,7 @@ class DashboardBase:
             situacoes = ['ativo', 'suspenso', 'cancelado']
         
         self.dados = dadosDashboard(self.page.cliente, situacoes)
-        self.cards = gridCards(valores_cards_inicial)
+        self.cards = gridCards(valores_cards_inicial, on_double_click_card=self.abrir_detalhes_card)
         self.mapa = painelMapa(self.page, self.dados)
 
         # Callback de dados para cards
@@ -549,6 +810,68 @@ class DashboardBase:
         
         # Chamada assíncrona (na verdade, sequencial pós-render) para carregar o mapa
         self.mapa.atualizar_mapa()
+
+    def abrir_detalhes_card(self, chave_card):
+        filtro_atual = self.colunas.filtro if hasattr(self, 'colunas') and self.colunas else {}
+        df = self.dados.obter_dados_filtrados(filtro_atual)
+        if 'validade' in df.columns:
+            df['validade_dt'] = pd.to_datetime(df['validade'], errors='coerce')
+        else:
+            df['validade_dt'] = pd.NaT
+
+        hoje = pd.Timestamp.today().normalize()
+        um_mes = hoje + pd.DateOffset(months=1)
+        quatro_meses = hoje + pd.DateOffset(months=4)
+
+        if chave_card == 'c5':
+            df_card = df[(df['validade_dt'] > um_mes) & (df['validade_dt'] <= quatro_meses)]
+            titulo = "Escopos a vencer (4m)"
+        elif chave_card == 'c6':
+            df_card = df[(df['validade_dt'] > hoje) & (df['validade_dt'] <= um_mes)]
+            titulo = "Escopos a vencer (1m)"
+        elif chave_card == 'c7':
+            df_card = df[df['validade_dt'] <= hoje]
+            titulo = "Escopos vencidos"
+        elif chave_card == 'c8':
+            if 'situacao' in df.columns:
+                df_card = df[df['situacao'].isin(['inativo', 'suspenso', 'cancelado'])]
+            else:
+                df_card = df.iloc[0:0]
+            titulo = "Escopos inativos"
+        else:
+            return
+
+        df_card = df_card.dropna(subset=['id_escopo']).drop_duplicates(subset=['id_escopo'])
+
+        itens = []
+        for _, row in df_card.iterrows():
+            val_dt = row.get('validade_dt')
+            val_str = ''
+            if pd.notna(val_dt):
+                val_str = val_dt.strftime('%Y-%m-%d')
+            itens.append({
+                'id_nucleo': row.get('id_nucleo'),
+                'nucleo': str(row.get('nucleo') or ''),
+                'id_grupo': row.get('id_grupo'),
+                'grupo': str(row.get('grupo') or ''),
+                'id_matricula': row.get('id_matricula'),
+                'matricula': str(row.get('matricula') or ''),
+                'id_uprod': row.get('id_uprod'),
+                'uprod': str(row.get('uprod') or ''),
+                'id_escopo': row.get('id_escopo'),
+                'escopo': str(row.get('escopo') or ''),
+                'validade': val_str,
+                'validade_formatada': val_dt.strftime('%d/%m/%Y') if pd.notna(val_dt) else '',
+                'situacao': str(row.get('situacao') or '')
+            })
+
+        janela = janelaDetalhesCard(
+            page=self.page,
+            titulo=titulo,
+            dados=itens,
+            filtro_dashboard=filtro_atual
+        )
+        janela.exibir()
 
     def criar_menu(self):
         menu = ft.PopupMenuButton(

@@ -499,6 +499,104 @@ class montarFichaGrupos():
             
         return f"/certificados/{nome_arquivo}"
 
+
+class montarRelatorioCardEscopos:
+    def __init__(self, titulo, dados_tabela):
+        self.titulo = titulo
+        self.dados_tabela = dados_tabela
+
+    def gerar_pdf(self):
+        from reportlab.lib.enums import TA_CENTER, TA_LEFT
+        
+        buffer = BytesIO()
+        doc = SimpleDocTemplate(buffer, pagesize=landscape(A4), rightMargin=30, leftMargin=30, topMargin=30, bottomMargin=30)
+        elementos = []
+        
+        styles = getSampleStyleSheet()
+        estilo_titulo = styles['Heading1']
+        estilo_normal = styles['Normal']
+        
+        estilo_celula = styles['Normal'].clone('estilo_celula_centro')
+        estilo_celula.alignment = TA_CENTER
+        estilo_celula.fontSize = 9
+        estilo_celula.leading = 11
+
+        estilo_celula_esq = styles['Normal'].clone('estilo_celula_esq')
+        estilo_celula_esq.alignment = TA_LEFT
+        estilo_celula_esq.fontSize = 9
+        estilo_celula_esq.leading = 11
+        
+        agora_str = datetime.now().strftime('%d/%m/%Y às %H:%M')
+        
+        # Cabeçalho
+        elementos.append(Paragraph(f"<b>Relatório:</b> {self.titulo}", estilo_titulo))
+        elementos.append(Paragraph(f"<b>Total de Registros:</b> {len(self.dados_tabela)}   |   <b>Gerado em:</b> {agora_str}", estilo_normal))
+        elementos.append(Spacer(1, 15))
+        
+        # Tabela
+        dados_tabela_pdf = [['Núcleo', 'Grupo', 'Matrícula', 'Unid. Produção', 'Escopo', 'Validade']]
+        
+        for item in self.dados_tabela:
+            val = item.get('validade_formatada') or ''
+            if not val and item.get('validade'):
+                try:
+                    val = datetime.strptime(str(item.get('validade'))[:10], '%Y-%m-%d').strftime('%d/%m/%Y')
+                except Exception:
+                    val = str(item.get('validade'))
+
+            linha = [
+                Paragraph(str(item.get('nucleo') or ''), estilo_celula_esq),
+                Paragraph(str(item.get('grupo') or ''), estilo_celula_esq),
+                Paragraph(str(item.get('matricula') or ''), estilo_celula),
+                Paragraph(str(item.get('uprod') or ''), estilo_celula_esq),
+                Paragraph(str(item.get('escopo') or ''), estilo_celula_esq),
+                Paragraph(str(val or ''), estilo_celula),
+            ]
+            dados_tabela_pdf.append(linha)
+            
+        tabela = Table(dados_tabela_pdf, colWidths=[110, 110, 60, 220, 200, 80])
+        tabela.setStyle(TableStyle([
+            ('BACKGROUND', (0,0), (-1,0), colors.grey),
+            ('TEXTCOLOR', (0,0), (-1,0), colors.whitesmoke),
+            ('ALIGN', (0,0), (-1,0), 'CENTER'),
+            ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0,0), (-1,0), 10),
+            ('BOTTOMPADDING', (0,0), (-1,0), 8),
+            ('TOPPADDING', (0,0), (-1,0), 8),
+            ('BACKGROUND', (0,1), (-1,-1), colors.white),
+            ('GRID', (0,0), (-1,-1), 0.5, colors.grey),
+            ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+        ]))
+        
+        elementos.append(tabela)
+        doc.build(elementos)
+        
+        buffer.seek(0)
+        return buffer.getvalue()
+
+    def imprimir(self):
+        import time, os
+        nome_arquivo = f"relatorio_escopos_{int(time.time())}.pdf"
+        caminho_dir = os.path.join(os.path.dirname(__file__), 'assets', 'certificados')
+        os.makedirs(caminho_dir, exist_ok=True)
+        
+        agora = time.time()
+        for f in os.listdir(caminho_dir):
+            caminho_f = os.path.join(caminho_dir, f)
+            if os.path.isfile(caminho_f):
+                if agora - os.path.getmtime(caminho_f) > 3600:
+                    try:
+                        os.remove(caminho_f)
+                    except Exception:
+                        pass
+                        
+        caminho_arquivo = os.path.join(caminho_dir, nome_arquivo)
+        with open(caminho_arquivo, "wb") as f:
+            f.write(self.gerar_pdf())
+            
+        return f"/certificados/{nome_arquivo}"
+
+
 if __name__ == "__main__":
     from escudo_supabase import login_supabase
     cliente = login_supabase()
