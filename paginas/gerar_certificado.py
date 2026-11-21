@@ -194,7 +194,7 @@ class montarCertificado():
 
         # Dados à direita: id
         ano_emissao = self.dados.capa['data_emissao'][:4]
-        certificado_id = f"{ano_emissao}{int(self.escopo_id):05d}"
+        certificado_id = f"{ano_emissao}{int(self.dados.capa['emissao_id']):06d}"
         linha = CaixaTexto(f"ID: {certificado_id}", 700, pontos=10).fazer_caixa(can, 60, 520, 'direita')       
 
     def criar_canvas_completo(self):
