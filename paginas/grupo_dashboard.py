@@ -115,7 +115,7 @@ class quadroTabela():
             ft.DataCell(txt(item.get('primeiro_associado', ''))),
             ft.DataCell(txt(item.get('escopo',             ''))),
             ft.DataCell(txt(data_formatada(item.get('validade')))),
-            ft.DataCell(txt(item.get('ultimo_movimento',   ''))),
+            ft.DataCell(txt((item.get('ultimo_movimento') or '')[:20])),
             ft.DataCell(botoes),
         ])
 
