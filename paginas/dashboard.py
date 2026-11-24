@@ -435,9 +435,10 @@ class dadosDashboard:
         situacoes_permitidas = [s.strip().lower() for s in (situacoes or ['ativo'])]
         if 'ultima_situacao' in df.columns:
             sit_serie = df['ultima_situacao'].fillna('').astype(str).str.strip().str.lower()
-            # Manter linhas onde id_escopo é NaN (para preservar navegação de matrículas/uprods sem escopo)
-            # Para linhas com id_escopo, manter apenas se a situação estiver permitida
-            mask_permitido = df['id_escopo'].isna() | sit_serie.isin(situacoes_permitidas)
+            # Manter se ultima_situacao é nula/vazia (dados em preenchimento sem escopo/acontecimento)
+            # OU se a situação preenchida estiver entre as permitidas pelo usuário
+            is_nula = df['ultima_situacao'].isna() | (sit_serie == '')
+            mask_permitido = is_nula | sit_serie.isin(situacoes_permitidas)
             df = df[mask_permitido].reset_index(drop=True)
         else:
             df = df.reset_index(drop=True)
@@ -475,11 +476,14 @@ class dadosDashboard:
         if 'ultima_situacao' in df_escopos.columns:
             sit_serie = df_escopos['ultima_situacao'].fillna('').astype(str).str.strip().str.lower()
             is_ativo = sit_serie == 'ativo'
+            # Inativos são escopos com situação preenchida diferente de 'ativo' (exclui nulos/vazios)
+            is_inativo = (sit_serie != '') & (sit_serie != 'ativo')
         else:
             is_ativo = pd.Series(True, index=df_escopos.index)
+            is_inativo = pd.Series(False, index=df_escopos.index)
 
         escopos_ativos = df_escopos.loc[is_ativo, 'id_escopo'].nunique()
-        escopos_inativos = df_escopos.loc[~is_ativo, 'id_escopo'].nunique()
+        escopos_inativos = df_escopos.loc[is_inativo, 'id_escopo'].nunique()
 
         # Validades apenas para escopos ativos (certificados não ativos não contam como a vencer/vencidos)
         df_ativos = df_escopos.loc[is_ativo]
@@ -846,9 +850,10 @@ class DashboardBase:
         if 'ultima_situacao' in df.columns:
             sit_serie = df['ultima_situacao'].fillna('').astype(str).str.strip().str.lower()
             is_ativo = (df['id_escopo'].notna()) & (sit_serie == 'ativo')
+            is_inativo = (df['id_escopo'].notna()) & (sit_serie != '') & (sit_serie != 'ativo')
         else:
             is_ativo = df['id_escopo'].notna()
-        is_inativo = (df['id_escopo'].notna()) & (~is_ativo)
+            is_inativo = pd.Series(False, index=df.index)
 
         if chave_card == 'c4':
             df_card = df[is_ativo]
