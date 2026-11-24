@@ -48,10 +48,10 @@ class gridCards:
                 bgcolor=ft.Colors.GREEN_100, 
                 border_radius=10,
                 padding=10,
-                tooltip="Duplo clique para detalhar" if i >= 4 else None
+                tooltip="Duplo clique para detalhar" if i >= 3 else None
             )
 
-            if i >= 4:
+            if i >= 3:
                 card = ft.GestureDetector(
                     content=card_container,
                     mouse_cursor=ft.MouseCursor.CLICK,
@@ -430,8 +430,18 @@ class dadosDashboard:
         # Baixar dados
         self.dados = cliente.table('vw_dados_com_associado').select('*').execute()
         df = pd.DataFrame(self.dados.data)
-        if 'situacao' in df.columns:
-            df = df[df['situacao'].isin(situacoes) | df['situacao'].isna() | (df['situacao'] == '')]
+        
+        # Filtro de situações permitidas pelo usuário nas configurações
+        situacoes_permitidas = [s.strip().lower() for s in (situacoes or ['ativo'])]
+        if 'ultima_situacao' in df.columns:
+            sit_serie = df['ultima_situacao'].fillna('').astype(str).str.strip().str.lower()
+            # Manter linhas onde id_escopo é NaN (para preservar navegação de matrículas/uprods sem escopo)
+            # Para linhas com id_escopo, manter apenas se a situação estiver permitida
+            mask_permitido = df['id_escopo'].isna() | sit_serie.isin(situacoes_permitidas)
+            df = df[mask_permitido].reset_index(drop=True)
+        else:
+            df = df.reset_index(drop=True)
+
         self.dados = df
         
         self.dados_de_associados = cliente.table('vw_escopo_cpf_visivel').select('*').execute()
@@ -443,9 +453,9 @@ class dadosDashboard:
 
     def criar_filtro(self, nome, valor_filtro):
         if valor_filtro == 'all':
-            return pd.Series([True] * len(self.dados))
+            return pd.Series(True, index=self.dados.index)
         elif valor_filtro == 0:
-            return pd.Series([False] * len(self.dados))
+            return pd.Series(False, index=self.dados.index)
 
         # Cada coluna é filtrada pelo ID do seu pai na hierarquia:
         # Grupos → filtrado por id_nucleo, Matriculas → por id_grupo, Escopos → por matricula
@@ -459,28 +469,38 @@ class dadosDashboard:
         # Calcular os valores
         grupos = dados_filtrados['id_grupo'].nunique()
         matriculas = dados_filtrados['matricula'].nunique()
-        escopos = dados_filtrados['id_escopo'].nunique()
-        hoje = pd.Timestamp.today()
+
+        # Filtrar escopos válidos
+        df_escopos = dados_filtrados[dados_filtrados['id_escopo'].notna()].copy()
+        if 'ultima_situacao' in df_escopos.columns:
+            sit_serie = df_escopos['ultima_situacao'].fillna('').astype(str).str.strip().str.lower()
+            is_ativo = sit_serie == 'ativo'
+        else:
+            is_ativo = pd.Series(True, index=df_escopos.index)
+
+        escopos_ativos = df_escopos.loc[is_ativo, 'id_escopo'].nunique()
+        escopos_inativos = df_escopos.loc[~is_ativo, 'id_escopo'].nunique()
+
+        # Validades apenas para escopos ativos (certificados não ativos não contam como a vencer/vencidos)
+        df_ativos = df_escopos.loc[is_ativo]
+        hoje = pd.Timestamp.today().normalize()
         um_mes = hoje + pd.DateOffset(months=1)
         quatro_meses = hoje + pd.DateOffset(months=4)
-        vencidos = dados_filtrados.loc[dados_filtrados['validade'] <= hoje, 'id_escopo'].nunique()
-        escopos_1m = dados_filtrados.loc[(dados_filtrados['validade'] > hoje) & (dados_filtrados['validade'] <= um_mes), 'id_escopo'].nunique()
-        escopos_4m = dados_filtrados.loc[(dados_filtrados['validade'] > um_mes) & (dados_filtrados['validade'] <= quatro_meses), 'id_escopo'].nunique()
-        if 'situacao' in dados_filtrados.columns:
-            inativos = dados_filtrados.loc[dados_filtrados['situacao'].isin(['inativo', 'suspenso', 'cancelado']), 'id_escopo'].nunique()
-        else:
-            inativos = 0
+
+        vencidos = df_ativos.loc[df_ativos['validade'] <= hoje, 'id_escopo'].nunique()
+        escopos_1m = df_ativos.loc[(df_ativos['validade'] > hoje) & (df_ativos['validade'] <= um_mes), 'id_escopo'].nunique()
+        escopos_4m = df_ativos.loc[(df_ativos['validade'] > um_mes) & (df_ativos['validade'] <= quatro_meses), 'id_escopo'].nunique()
      
         # Retornar os valores
         return {
             'c1': {'texto': 'Grupos', 'valor': grupos},
             'c2': {'texto': 'Matrículas', 'valor': matriculas},
             'c3': {'texto': 'Associados', 'valor': ass_filtrados},
-            'c4': {'texto': 'Escopos ativos', 'valor': escopos},
+            'c4': {'texto': 'Escopos ativos', 'valor': escopos_ativos},
             'c5': {'texto': 'Escopos a vencer (4m)', 'valor': escopos_4m},
             'c6': {'texto': 'Escopos a vencer (1m)', 'valor': escopos_1m},
             'c7': {'texto': 'Escopos vencidos', 'valor': vencidos},
-            'c8': {'texto': 'Escopos\ninativos', 'valor': inativos}
+            'c8': {'texto': 'Escopos\ninativos', 'valor': escopos_inativos}
         }
 
     def obter_dados_filtrados(self, filtro):
@@ -823,20 +843,27 @@ class DashboardBase:
         um_mes = hoje + pd.DateOffset(months=1)
         quatro_meses = hoje + pd.DateOffset(months=4)
 
-        if chave_card == 'c5':
-            df_card = df[(df['validade_dt'] > um_mes) & (df['validade_dt'] <= quatro_meses)]
+        if 'ultima_situacao' in df.columns:
+            sit_serie = df['ultima_situacao'].fillna('').astype(str).str.strip().str.lower()
+            is_ativo = (df['id_escopo'].notna()) & (sit_serie == 'ativo')
+        else:
+            is_ativo = df['id_escopo'].notna()
+        is_inativo = (df['id_escopo'].notna()) & (~is_ativo)
+
+        if chave_card == 'c4':
+            df_card = df[is_ativo]
+            titulo = "Escopos ativos"
+        elif chave_card == 'c5':
+            df_card = df[is_ativo & (df['validade_dt'] > um_mes) & (df['validade_dt'] <= quatro_meses)]
             titulo = "Escopos a vencer (4m)"
         elif chave_card == 'c6':
-            df_card = df[(df['validade_dt'] > hoje) & (df['validade_dt'] <= um_mes)]
+            df_card = df[is_ativo & (df['validade_dt'] > hoje) & (df['validade_dt'] <= um_mes)]
             titulo = "Escopos a vencer (1m)"
         elif chave_card == 'c7':
-            df_card = df[df['validade_dt'] <= hoje]
+            df_card = df[is_ativo & (df['validade_dt'] <= hoje)]
             titulo = "Escopos vencidos"
         elif chave_card == 'c8':
-            if 'situacao' in df.columns:
-                df_card = df[df['situacao'].isin(['inativo', 'suspenso', 'cancelado'])]
-            else:
-                df_card = df.iloc[0:0]
+            df_card = df[is_inativo]
             titulo = "Escopos inativos"
         else:
             return
@@ -862,7 +889,7 @@ class DashboardBase:
                 'escopo': str(row.get('escopo') or ''),
                 'validade': val_str,
                 'validade_formatada': val_dt.strftime('%d/%m/%Y') if pd.notna(val_dt) else '',
-                'situacao': str(row.get('situacao') or '')
+                'situacao': str(row.get('ultima_situacao') or '')
             })
 
         janela = janelaDetalhesCard(
