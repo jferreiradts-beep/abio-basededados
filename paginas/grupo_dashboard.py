@@ -235,7 +235,7 @@ class grupoBase():
             self.dropdown_nucleo.value = str(saved_nucleo_id)
             self.page.session.set("grupo_dashboard_nucleo_id", saved_nucleo_id)
             
-            resposta_grupos = self.page.cliente.rpc('obter_opcoes', {'idx': 32, 'p_filtro': saved_nucleo_id}).execute()
+            resposta_grupos = self.page.cliente.rpc('obter_opcoes', {'idx': 39, 'p_filtro': saved_nucleo_id}).execute()
             opcoes_grupos = [ft.dropdown.Option(key=str(g['id']), text=g['opcao']) for g in resposta_grupos.data]
             self.dropdown_grupo.options = opcoes_grupos
             
@@ -268,7 +268,7 @@ class grupoBase():
         nucleo_id = self.dropdown_nucleo.value
         self.page.session.set("grupo_dashboard_nucleo_id", nucleo_id)
         if nucleo_id:
-            resposta = self.page.cliente.rpc('obter_opcoes', {'idx': 35, 'p_filtro': nucleo_id}).execute()
+            resposta = self.page.cliente.rpc('obter_opcoes', {'idx': 39, 'p_filtro': nucleo_id}).execute()
             opcoes = [ft.dropdown.Option(key=str(g['id']), text=g['opcao']) for g in resposta.data]
             self.dropdown_grupo.options = opcoes
             self.dropdown_grupo.value = None
