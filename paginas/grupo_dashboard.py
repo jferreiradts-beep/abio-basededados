@@ -154,7 +154,7 @@ class linhaBotoes():
     def __init__(self, page, pai=None):
         self.page = page
         self.pai = pai
-        self.btn_imprimir = ft.ElevatedButton("Imprimir", width=100, on_click=lambda e: self.botoes_acoes('imprimir'))
+        self.btn_imprimir = ft.ElevatedButton("Imprimir", icon=ft.Icons.PRINT, width=100, on_click=lambda e: self.botoes_acoes('imprimir'))
         self.btn_voltar = ft.ElevatedButton("Voltar", width=100, on_click=lambda e: self.botoes_acoes('voltar'))
 
     def botoes_acoes(self, acao):
