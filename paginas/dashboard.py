@@ -433,13 +433,33 @@ class dadosDashboard:
         
         # Filtro de situações permitidas pelo usuário nas configurações
         situacoes_permitidas = [s.strip().lower() for s in (situacoes or ['ativo'])]
+        permitir_cancelado = 'cancelado' in situacoes_permitidas
+
         if 'ultima_situacao' in df.columns:
             sit_serie = df['ultima_situacao'].fillna('').astype(str).str.strip().str.lower()
-            # Manter se ultima_situacao é nula/vazia (dados em preenchimento sem escopo/acontecimento)
-            # OU se a situação preenchida estiver entre as permitidas pelo usuário
-            is_nula = df['ultima_situacao'].isna() | (sit_serie == '')
-            mask_permitido = is_nula | sit_serie.isin(situacoes_permitidas)
-            df = df[mask_permitido].reset_index(drop=True)
+            
+            # Se cancelados NÃO estão permitidos nas configurações:
+            if not permitir_cancelado:
+                # 1) 'cancelado_e' (cancelamento de escopo):
+                # Mantém a linha (núcleo, grupo, matrícula, uprod), mas limpa os dados de escopo
+                # para que não apareçam na coluna 'escopo' nem contem nos cards de escopos ativos.
+                mask_canc_escopo = sit_serie == 'cancelado_e'
+                colunas_escopo = [c for c in ['id_escopo', 'escopo', 'validade'] if c in df.columns]
+                df.loc[mask_canc_escopo, colunas_escopo] = np.nan
+                # Atualiza a série após a modificação
+                sit_serie = df['ultima_situacao'].fillna('').astype(str).str.strip().str.lower()
+
+                # 2) Filtro geral: mantém vazios/nulos, 'cancelado_e' (que agora tem escopo nulo)
+                # e qualquer outra situação permitida (ex: 'ativo', 'suspenso').
+                # Linhas com cancelamento de matrícula ('cancelado') são descartadas por completo.
+                is_nula = df['ultima_situacao'].isna() | (sit_serie == '')
+                mask_permitido = is_nula | (sit_serie == 'cancelado_e') | sit_serie.isin(situacoes_permitidas)
+                df = df[mask_permitido].reset_index(drop=True)
+            else:
+                # Se cancelados estão permitidos, mantém cancelado e cancelado_e
+                is_nula = df['ultima_situacao'].isna() | (sit_serie == '')
+                mask_permitido = is_nula | sit_serie.isin(situacoes_permitidas) | (sit_serie == 'cancelado_e')
+                df = df[mask_permitido].reset_index(drop=True)
         else:
             df = df.reset_index(drop=True)
 
